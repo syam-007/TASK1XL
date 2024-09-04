@@ -1,0 +1,24 @@
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+local_settings.py
+db.sqlite3
+
+# Environments
+.env
+venv/
+.venv/
+
+# VS Code
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Migrations
+*/migrations/*
+
+# PyCharm
+.idea/
