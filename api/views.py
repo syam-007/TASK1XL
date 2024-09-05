@@ -96,12 +96,12 @@ class UploadExcelView(APIView):
 
         try:
             job = CreateJob.objects.get(job_number=job_number)
-            survey_type = SurveyTypes.objects.get(id=survey_type_id)
+            survey_type_obj = SurveyTypes.objects.get(id=survey_type_id)
 
             # Create the SurveyInitialDataHeader instance
             survey_header = SurveyInitialDataHeader.objects.create(
                 job_number=job,
-                survey_type=survey_type
+                survey_type=survey_type_obj
             )
 
         except CreateJob.DoesNotExist:
