@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from  .serializer import CustomerSerializer,UnitOfMeasureSeializer,JobInfoSerializer,JodDetailSerializer,ServiceTypeSerializer,RigMasterSerilalizer,WelltypeSerializer,ToolTypeSerializer,HoleSectionSerializer,SurveyTypeSerializer,CreateJobSerializer,SurveyInitialDataSerializer
 from rest_framework.viewsets import ModelViewSet
-from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob
+from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 import pandas as pd
@@ -51,30 +51,88 @@ class MasterDataView(APIView):
 
 
 
-class UploadExcelView(APIView):
+# class UploadExcelView(APIView):
     
+#     def post(self, request, *args, **kwargs):
+#         file = request.FILES.get('file')
+        
+#         if file is None:
+#             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+#         try:
+#             df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
+#         except Exception as e:
+#             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+#         for _, row in df.iterrows():
+#             data = {
+#                 "depth": row.get("depth"),
+#                 "Inc": row.get("Inc"),
+#                 "AzG": row.get("AzG"),  
+#             }
+#             serializer = SurveyInitialDataSerializer(data=data)
+#             if serializer.is_valid():
+#                 serializer.save()
+#             else:
+#                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+#         return Response({"status": "success"}, status=status.HTTP_201_CREATED)
+class UploadExcelView(APIView):
+
     def post(self, request, *args, **kwargs):
         file = request.FILES.get('file')
-        
+        job_number = request.data.get('job_number')  
+        survey_type_id = request.data.get('survey_type')  
         if file is None:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
-        for _, row in df.iterrows():
-            data = {
-                "depth": row.get("depth"),
-                "Inc": row.get("Inc"),
-                "AzG": row.get("AzG"),
-                
-            }
-            serializer = SurveyInitialDataSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response({"status": "success"}, status=status.HTTP_201_CREATED)
+            return Response({"error": f"Error reading Excel file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not job_number or not survey_type_id:
+            return Response({"error": "Missing job_number or survey_type"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            job = CreateJob.objects.get(job_number=job_number)
+            survey_type = SurveyTypes.objects.get(id=survey_type_id)
+
+            survey_header = SurveyInitialDataHeader.objects.create(
+                job_number=job,
+                survey_type=survey_type
+            )
+
+        except CreateJob.DoesNotExist:
+            return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
+        except SurveyTypes.DoesNotExist:
+            return Response({"error": "Survey type not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        errors = []
+        success_count = 0
+        for index, row in df.iterrows():
+            try:
+                depth = row.get("depth")
+                inc = row.get("Inc")
+                azg = row.get("AzG")
+                SurveyInitialDataDetail.objects.create(
+                    visit_key=survey_header,
+                    job_number=job,
+                    depth=depth,
+                    Inc=inc,
+                    AzG=azg
+                )
+                success_count += 1
+            except Exception as e:
+                errors.append({"row": index + 2, "error": str(e)})
+
+        if errors:
+            return Response({
+                "status": "partial success",
+                "success_count": success_count,
+                "errors": errors
+            }, status=status.HTTP_207_MULTI_STATUS)
+
+        return Response({
+            "status": "success",
+            "success_count": success_count
+        }, status=status.HTTP_201_CREATED)
