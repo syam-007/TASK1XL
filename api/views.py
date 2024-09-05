@@ -76,12 +76,13 @@ class MasterDataView(APIView):
 #                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
 #         return Response({"status": "success"}, status=status.HTTP_201_CREATED)
-class UploadExcelView(APIView):
 
+
+class UploadExcelView(APIView):
     def post(self, request, *args, **kwargs):
         file = request.FILES.get('file')
         job_number = request.data.get('job_number')  
-        survey_type_id = request.data.get('survey_type')  
+        survey_type_id = request.data.get('survey_type')  # To retrieve SurveyType ID
         if file is None:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -90,13 +91,14 @@ class UploadExcelView(APIView):
         except Exception as e:
             return Response({"error": f"Error reading Excel file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not job_number or not survey_type:
+        if not job_number or not survey_type_id:
             return Response({"error": "Missing job_number or survey_type"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             job = CreateJob.objects.get(job_number=job_number)
             survey_type = SurveyTypes.objects.get(id=survey_type_id)
 
+            # Create the SurveyInitialDataHeader instance
             survey_header = SurveyInitialDataHeader.objects.create(
                 job_number=job,
                 survey_type=survey_type
@@ -114,18 +116,18 @@ class UploadExcelView(APIView):
                 depth = row.get("depth")
                 inc = row.get("Inc")
                 azg = row.get("AzG")
-                g_t= row.get("G(t)")
+                g_t = row.get("G(t)")
                 w_t = row.get("W(t)")
 
-               
+                # Create SurveyInitialDataDetail instance
                 SurveyInitialDataDetail.objects.create(
-                    survey_type= survey_header,
+                    header=survey_header,  # Use the survey_header as the foreign key
                     job_number=job,
                     depth=depth,
                     Inc=inc,
                     AzG=azg,
-                    g_t = g_t,
-                    w_t = w_t
+                    g_t=g_t,
+                    w_t=w_t
                 )
                 success_count += 1
             except Exception as e:
