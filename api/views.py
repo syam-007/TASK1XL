@@ -119,7 +119,7 @@ class UploadExcelView(APIView):
 
                
                 SurveyInitialDataDetail.objects.create(
-                    visit_key=survey_header,
+                    survey_type=survey_type,
                     job_number=job,
                     depth=depth,
                     Inc=inc,
