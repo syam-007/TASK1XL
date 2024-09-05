@@ -208,7 +208,7 @@ class TieOnInformation(models.Model):
 class SurveyInitialDataHeader(models.Model):
     id = models.AutoField(primary_key=True)
     job_number = models.ForeignKey(CreateJob,on_delete = models.CASCADE,db_column='job_number')
-    survey_type = models.ForeignKey(SurveyInfo,on_delete = models.CASCADE,db_column='survey_type')
+    survey_type = models.ForeignKey(SurveyTypes,on_delete = models.CASCADE,db_column='survey_type')
     survey_date = models.DateField(auto_now_add=True)
     class Meta:
         db_table = 'task_survey_initial_data_header'
