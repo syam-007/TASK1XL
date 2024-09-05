@@ -216,7 +216,7 @@ class SurveyInitialDataHeader(models.Model):
 class SurveyInitialDataDetail(models.Model):
     id = models.AutoField(primary_key=True)
     job_number = models.ForeignKey(CreateJob,on_delete=models.CASCADE,db_column='job_number')
-    header = models.ForeignKey(SurveyInitialDataHeader, on_delete=models.CASCADE, related_name='details', db_column='survey_run_id')
+    header = models.ForeignKey(SurveyInitialDataHeader, on_delete=models.CASCADE, related_name='details', db_column='survey_type')
     depth = models.IntegerField()
     Inc = models.DecimalField(max_digits=3,decimal_places=2)
     AzG = models.DecimalField(max_digits=5,decimal_places=2)

@@ -81,7 +81,7 @@ class UploadExcelView(APIView):
     def post(self, request, *args, **kwargs):
         file = request.FILES.get('file')
         job_number = request.data.get('job_number')  
-       
+        survey_type = request.data.get('survey_type')  
         if file is None:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -90,15 +90,22 @@ class UploadExcelView(APIView):
         except Exception as e:
             return Response({"error": f"Error reading Excel file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not job_number:
+        if not job_number or not survey_type:
             return Response({"error": "Missing job_number or survey_type"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             job = CreateJob.objects.get(job_number=job_number)
+            survey_type = SurveyTypes.objects.get(id=survey_type)
+
+            survey_header = SurveyInitialDataHeader.objects.create(
+                job_number=job,
+                survey_type=survey_type
+            )
 
         except CreateJob.DoesNotExist:
             return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
-        
+        except SurveyTypes.DoesNotExist:
+            return Response({"error": "Survey type not found"}, status=status.HTTP_404_NOT_FOUND)
 
         errors = []
         success_count = 0
@@ -107,11 +114,18 @@ class UploadExcelView(APIView):
                 depth = row.get("depth")
                 inc = row.get("Inc")
                 azg = row.get("AzG")
+                g_t= row.get("G(t)")
+                w_t = row.get("W(t)")
+
+               
                 SurveyInitialDataDetail.objects.create(
+                    visit_key=survey_header,
                     job_number=job,
                     depth=depth,
                     Inc=inc,
-                    AzG=azg
+                    AzG=azg,
+                    g_t = g_t,
+                    w_t = w_t
                 )
                 success_count += 1
             except Exception as e:
