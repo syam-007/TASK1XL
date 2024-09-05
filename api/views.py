@@ -95,17 +95,10 @@ class UploadExcelView(APIView):
 
         try:
             job = CreateJob.objects.get(job_number=job_number)
-           
-
-            survey_header = SurveyInitialDataHeader.objects.create(
-                job_number=job,
-               
-            )
 
         except CreateJob.DoesNotExist:
             return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
-        except SurveyTypes.DoesNotExist:
-            return Response({"error": "Survey type not found"}, status=status.HTTP_404_NOT_FOUND)
+        
 
         errors = []
         success_count = 0
