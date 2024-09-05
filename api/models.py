@@ -44,12 +44,10 @@ class RigMaster(models.Model):
 
 class EmployeeMaster(models.Model):
     id = models.AutoField(primary_key=True)
-    user_id = models.ForeignKey(User,on_delete = models.PROTECT,db_column='user_id')
     emp_id = models.CharField(max_length=255,unique=True)
     emp_name = models.CharField(max_length=255)
     emp_short_name = models.CharField(max_length=255)
     emp_designation = models.CharField(max_length=255)
-    
     
 
     def __str__(self) -> str:
@@ -141,22 +139,6 @@ class JobInfo(models.Model):
     def location(self):
         return self.job_number.location
 
-
-
-    # def save(self, *args, **kwargs):
-    #     if not self.job_number:
-    #         prefix = "OM"
-    #         last_job = JobInfo.objects.all().order_by('job_number').last()
-    #         if last_job:
-    #             last_job_number = int(last_job.job_number[2:]) 
-    #             new_job_number = last_job_number + 1
-    #         else:
-    #             new_job_number = 1100
-
-    #         self.job_number = f"{prefix}{new_job_number}"
-
-    #     super(JobInfo, self).save(*args, **kwargs)    
-    
 class WellInfo(models.Model):
     well_info_id = models.AutoField(primary_key=True)
     well_id = models.IntegerField()
@@ -185,7 +167,7 @@ class WellInfo(models.Model):
 class SurveyInfo(models.Model):
     survey_info_id = models.AutoField(primary_key=True)
     run_name = models.CharField(max_length=3)
-    job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT)
+    job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT,db_column='job_number')
     run_number = models.IntegerField()
     type_of_tool = models.ForeignKey(ToolMaster,on_delete=models.PROTECT)
     survey_type = models.ForeignKey(SurveyTypes,on_delete=models.PROTECT)
@@ -218,32 +200,28 @@ class TieOnInformation(models.Model):
     latitude = models.IntegerField()
     azimuth = models.IntegerField()
     departure = models.IntegerField()
-    job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT)
+    job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT,db_column='job_number')
     class Meta:
         db_table = 'task_survey_tie_on_info'
-
-class ToolsData(models.Model):
-    job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT)
-    Measured_Depth = models.DecimalField(max_digits=3,decimal_places=2)
-    Inclination = models.DecimalField(max_digits=3,decimal_places=2)
-    Azimuth = models.DecimalField(max_digits=3,decimal_places=2)
-
-    class Meta:
-        db_table = 'task_tools_data'
 
 
 class SurveyInitialDataHeader(models.Model):
     id = models.AutoField(primary_key=True)
     job_number = models.ForeignKey(CreateJob,on_delete = models.CASCADE,db_column='job_number')
+    survey_type = models.ForeignKey(SurveyInfo,on_delete = models.CASCADE,db_column='survey_type')
+    survey_date = models.DateField(auto_now_add=True)
     class Meta:
         db_table = 'task_survey_initial_data_header'
 
 class SurveyInitialDataDetail(models.Model):
     id = models.AutoField(primary_key=True)
     job_number = models.ForeignKey(CreateJob,on_delete=models.CASCADE,db_column='job_number')
+    header = models.ForeignKey(SurveyInitialDataHeader, on_delete=models.CASCADE, related_name='details', db_column='survey_run_id')
     depth = models.IntegerField()
     Inc = models.DecimalField(max_digits=3,decimal_places=2)
     AzG = models.DecimalField(max_digits=5,decimal_places=2)
+    g_t = models.DecimalField(max_digits=5,decimal_places=2,db_column="G(t)")
+    w_t = models.DecimalField(max_digits=5,decimal_places=2,db_column="W(t)")
     class Meta:
         db_table = 'task_survey_initial_data_detail'
 

@@ -89,6 +89,17 @@ DATABASES = {
     }
 }
 
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "taskxldb",
+        "HOST":"taskxldb.ch04ewciazz0.me-central-1.rds.amazonaws.com",
+        "USER":"admin",
+        "PORT":"3306",
+        "PASSWORD":"password"
+    }
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
