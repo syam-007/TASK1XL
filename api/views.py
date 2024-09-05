@@ -81,7 +81,7 @@ class UploadExcelView(APIView):
     def post(self, request, *args, **kwargs):
         file = request.FILES.get('file')
         job_number = request.data.get('job_number')  
-        survey_type_id = request.data.get('survey_type')  
+       
         if file is None:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -90,16 +90,16 @@ class UploadExcelView(APIView):
         except Exception as e:
             return Response({"error": f"Error reading Excel file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not job_number or not survey_type_id:
+        if not job_number:
             return Response({"error": "Missing job_number or survey_type"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             job = CreateJob.objects.get(job_number=job_number)
-            survey_type = SurveyTypes.objects.get(id=survey_type_id)
+           
 
             survey_header = SurveyInitialDataHeader.objects.create(
                 job_number=job,
-                survey_type=survey_type
+               
             )
 
         except CreateJob.DoesNotExist:
@@ -115,7 +115,6 @@ class UploadExcelView(APIView):
                 inc = row.get("Inc")
                 azg = row.get("AzG")
                 SurveyInitialDataDetail.objects.create(
-                    visit_key=survey_header,
                     job_number=job,
                     depth=depth,
                     Inc=inc,

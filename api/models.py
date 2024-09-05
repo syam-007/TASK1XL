@@ -235,13 +235,11 @@ class ToolsData(models.Model):
 class SurveyInitialDataHeader(models.Model):
     id = models.AutoField(primary_key=True)
     job_number = models.ForeignKey(CreateJob,on_delete = models.CASCADE,db_column='job_number')
-    survey_type = models.ForeignKey(SurveyTypes,on_delete=models.CASCADE)
     class Meta:
         db_table = 'task_survey_initial_data_header'
 
 class SurveyInitialDataDetail(models.Model):
     id = models.AutoField(primary_key=True)
-    visit_key = models.ForeignKey(SurveyInitialDataHeader,on_delete=models.PROTECT,db_column='vist_key')
     job_number = models.ForeignKey(CreateJob,on_delete=models.CASCADE,db_column='job_number')
     depth = models.IntegerField()
     Inc = models.DecimalField(max_digits=3,decimal_places=2)
