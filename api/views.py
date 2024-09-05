@@ -9,10 +9,21 @@ from rest_framework import generics
 import pandas as pd
 from io import BytesIO
 from rest_framework import status
+from rest_framework.exceptions import NotFound
 
 class JobViewSet(ModelViewSet):
     queryset = JobInfo.objects.all()
     serializer_class = JobInfoSerializer
+    lookup_field = 'job_number'
+    def get_object(self):
+        job_number = self.kwargs.get(self.lookup_field)
+        try:
+            job = CreateJob.objects.get(job_number=job_number)
+            return JobInfo.objects.get(job_number=job)
+        except CreateJob.DoesNotExist:
+            raise NotFound(f"Job with job_number {job_number} does not exist.")
+        except JobInfo.DoesNotExist:
+            raise NotFound(f"JobInfo for job_number {job_number} does not exist.")
 
 class CustomerDetailViewSet(ModelViewSet):
     queryset = CustomerMaster.objects.all()
@@ -82,7 +93,7 @@ class UploadExcelView(APIView):
     def post(self, request, *args, **kwargs):
         file = request.FILES.get('file')
         job_number = request.data.get('job_number')  
-        survey_type_id = request.data.get('survey_type')  # To retrieve SurveyType ID
+        survey_type_id = request.data.get('survey_type')
         if file is None:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -98,7 +109,7 @@ class UploadExcelView(APIView):
             job = CreateJob.objects.get(job_number=job_number)
             survey_type_obj = SurveyTypes.objects.get(id=survey_type_id)
 
-            # Create the SurveyInitialDataHeader instance
+           
             survey_header = SurveyInitialDataHeader.objects.create(
                 job_number=job,
                 survey_type=survey_type_obj
@@ -119,9 +130,9 @@ class UploadExcelView(APIView):
                 g_t = row.get("G(t)")
                 w_t = row.get("W(t)")
 
-                # Create SurveyInitialDataDetail instance
+               
                 SurveyInitialDataDetail.objects.create(
-                    header=survey_header,  # Use the survey_header as the foreign key
+                    header=survey_header, 
                     job_number=job,
                     depth=depth,
                     Inc=inc,
