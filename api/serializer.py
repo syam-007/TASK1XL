@@ -81,12 +81,30 @@ class SurveyInitialDataSerializer(serializers.ModelSerializer):
 class WellInfoSerializer(serializers.ModelSerializer):
     north_coordinates = serializers.SerializerMethodField()
     east_coorinates = serializers.SerializerMethodField()
+    w_t = serializers.SerializerMethodField()
+    max_wt = serializers.SerializerMethodField()
+    min_wt = serializers.SerializerMethodField()
+    g_t = serializers.SerializerMethodField()
+    max_gt = serializers.SerializerMethodField()
+    min_gt = serializers.SerializerMethodField()
+
     class Meta:
         model = WellInfo
         fields='__all__'
-    def get_north(self, obj):
+    def get_north_coordinates(self, obj):
         return obj.get_north_coordinate
-    def get_east(self, obj):
+    def get_east_coorinates(self, obj):
         return obj.get_east_coordinate
-        
+    def get_w_t(self,obj):
+        return obj.get_W_t
+    def get_max_wt(self,obj):
+        return obj.max_w_t
+    def get_min_wt(self,obj):
+        return obj.min_w_t
+    def get_g_t(self,obj):
+        return obj. get_G_t
+    def get_max_gt(self,obj):
+        return obj. max_G_t
+    def get_min_gt(self,obj):
+        return obj. min_G_t
     
