@@ -8,6 +8,7 @@ router = DefaultRouter()
 router.register('customer',views.CustomerDetailViewSet)
 router.register('job',views.JobViewSet)
 router.register('create-job',views.CreateJobViewSet)
+router.register('well-info',views.WellinfoViewSet)
 
 
 
@@ -16,5 +17,6 @@ urlpatterns = [
     path('master-data/',views.MasterDataView.as_view()),
     # path('my-jobs/',views.EmployeeJobListAPIView.as_view())
     path('upload-excel/',views.UploadExcelView.as_view(), name='upload-excel'),
+    
    
 ]

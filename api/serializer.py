@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (JobInfo,CustomerMaster,UnitofMeasureMaster,
                      ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,
-                     SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail)
+                     SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail,WellInfo)
 
 
 class ServiceTypeSerializer(serializers.ModelSerializer):
@@ -78,3 +78,15 @@ class SurveyInitialDataSerializer(serializers.ModelSerializer):
      class Meta:
          model = SurveyInitialDataDetail
          fields = '__all__'
+class WellInfoSerializer(serializers.ModelSerializer):
+    north_coordinates = serializers.SerializerMethodField()
+    east_coorinates = serializers.SerializerMethodField()
+    class Meta:
+        model = WellInfo
+        fields='__all__'
+    def get_north(self, obj):
+        return obj.get_north_coordinate
+    def get_east(self, obj):
+        return obj.get_east_coordinate
+        
+    

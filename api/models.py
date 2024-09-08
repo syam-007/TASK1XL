@@ -145,7 +145,7 @@ class WellInfo(models.Model):
     job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT)
     latitude_1 = models.IntegerField()
     latitude_2 = models.IntegerField()
-    latitude_3 = models.DecimalField(max_digits=4,decimal_places=2)
+    latitude_3 = models.DecimalField(max_digits=7,decimal_places=5)
     longitude_1 = models.IntegerField()
     longitude_2 = models.IntegerField()
     longitude_3 = models.DecimalField(max_digits=4,decimal_places=2)
@@ -162,6 +162,12 @@ class WellInfo(models.Model):
 
     class Meta:
         db_table = 'task_well_info'
+    @property
+    def get_north_coordinate(self):
+        return self.latitude_1 + (((self.latitude_3 / 60) + self.latitude_2) / 60)
+    @property
+    def get_east_coordinate(self):
+        return self.longitude_1 + (((self.longitude_3 / 60) + self.longitude_2) / 60)
 
 
 class SurveyInfo(models.Model):
@@ -222,6 +228,7 @@ class SurveyInitialDataDetail(models.Model):
     AzG = models.DecimalField(max_digits=5,decimal_places=2)
     g_t = models.DecimalField(max_digits=5,decimal_places=2,db_column="G(t)")
     w_t = models.DecimalField(max_digits=5,decimal_places=2,db_column="W(t)")
+
     class Meta:
         db_table = 'task_survey_initial_data_detail'
 
