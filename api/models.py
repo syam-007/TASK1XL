@@ -170,6 +170,7 @@ class WellInfo(models.Model):
     @property
     def get_east_coordinate(self):
         east_coordinate = self.longitude_1 + (((self.longitude_3 / 60) + self.longitude_2) / 60)
+        return float(f"{ east_coordinate:.8f}")
     @property
     def get_W_t(self):  
         PI = math.pi 
