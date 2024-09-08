@@ -143,7 +143,7 @@ class JobInfo(models.Model):
 class WellInfo(models.Model):
     well_info_id = models.AutoField(primary_key=True)
     well_id = models.IntegerField()
-    job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT)
+    job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT,)
     latitude_1 = models.IntegerField()
     latitude_2 = models.IntegerField()
     latitude_3 = models.DecimalField(max_digits=7,decimal_places=5)
@@ -194,7 +194,7 @@ class WellInfo(models.Model):
             (9.780327 * (1 + (0.0053024 * (math.sin(north_coord_radians) ** 2)) -
             (0.0000058 * (math.sin(two_north_coord_radians) ** 2)))) -
             ((3.086 * 10 ** -6) * G18)
-        ) * 1000
+        ) * 100
         return float(f"{G_t:.5f}")
     @property
     def max_G_t(self):  
@@ -245,6 +245,7 @@ class TieOnInformation(models.Model):
     job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT,db_column='job_number')
     class Meta:
         db_table = 'task_survey_tie_on_info'
+    
 
 
 class SurveyInitialDataHeader(models.Model):
@@ -264,8 +265,19 @@ class SurveyInitialDataDetail(models.Model):
     AzG = models.DecimalField(max_digits=5,decimal_places=2)
     g_t = models.DecimalField(max_digits=5,decimal_places=2,db_column="G(t)")
     w_t = models.DecimalField(max_digits=5,decimal_places=2,db_column="W(t)")
+    g_t_status = models.CharField(max_length=10)  # e.g., high, good, low, n/c
+    w_t_status = models.CharField(max_length=10)  # e.g., high, good, low, n/c
+    status = models.CharField(max_length=10)       # Overall status
+    g_t_difference = models.DecimalField(max_digits=10, decimal_places=2)
+    w_t_difference = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
         db_table = 'task_survey_initial_data_detail'
+
+
+
+
+
+
 
 
