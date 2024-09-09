@@ -156,7 +156,7 @@ class WellInfo(models.Model):
     expected_well_temp = models.IntegerField()
     expected_wellbore_inclination= models.IntegerField()
     central_meridian = models.IntegerField()
-    GLE = models.DecimalField(max_digits=4,decimal_places=2)
+    GLE = models.DecimalField(max_digits=6,decimal_places=2)
     RKB = models.DecimalField(max_digits=3,decimal_places=2)
     ref_elivation = models.CharField(max_length=255)
     ref_datum  = models.CharField(max_length=255) 
@@ -182,8 +182,6 @@ class WellInfo(models.Model):
     @property
     def min_w_t(self):  
         return round(self.get_W_t - 3,2) 
- 
-
     @property
     def get_G_t(self): 
         north_coord = float(self.get_north_coordinate)
@@ -192,9 +190,8 @@ class WellInfo(models.Model):
         G18 = float(self.GLE)
         G_t = (
             (9.780327 * (1 + (0.0053024 * (math.sin(north_coord_radians) ** 2)) -
-            (0.0000058 * (math.sin(two_north_coord_radians) ** 2)))) -
-            ((3.086 * 10 ** -6) * G18)
-        ) * 100
+            (0.0000058 * (math.sin(two_north_coord_radians) ** 2)))) -((3.086 * 10 ** -6) * G18)
+        ) * 102
         return float(f"{G_t:.5f}")
     @property
     def max_G_t(self):  
@@ -265,9 +262,9 @@ class SurveyInitialDataDetail(models.Model):
     AzG = models.DecimalField(max_digits=5,decimal_places=2)
     g_t = models.DecimalField(max_digits=5,decimal_places=2,db_column="G(t)")
     w_t = models.DecimalField(max_digits=5,decimal_places=2,db_column="W(t)")
-    g_t_status = models.CharField(max_length=10)  # e.g., high, good, low, n/c
-    w_t_status = models.CharField(max_length=10)  # e.g., high, good, low, n/c
-    status = models.CharField(max_length=10)       # Overall status
+    g_t_status = models.CharField(max_length=10) 
+    w_t_status = models.CharField(max_length=10)
+    status = models.CharField(max_length=10) 
     g_t_difference = models.DecimalField(max_digits=10, decimal_places=2)
     w_t_difference = models.DecimalField(max_digits=10, decimal_places=2)
 

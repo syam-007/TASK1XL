@@ -37,12 +37,9 @@ class WellinfoViewSet(ModelViewSet):
     queryset = WellInfo.objects.all()
     serializer_class = WellInfoSerializer
 
-
-        
-   
-
 class MasterDataView(APIView):
     def get(self,request):
+        customers = CustomerSerializer(CustomerMaster.objects.all(),many=True).data
         service_type = ServiceTypeSerializer(ServiceType.objects.all(),many=True).data
         unit_of_measure = UnitOfMeasureSeializer(UnitofMeasureMaster.objects.all(),many=True).data
         rig_master = RigMasterSerilalizer(RigMaster.objects.all(),many=True).data
@@ -51,6 +48,7 @@ class MasterDataView(APIView):
         hole_section = HoleSectionSerializer(HoleSection.objects.all(),many=True).data
         survey_type = SurveyTypeSerializer(SurveyTypes.objects.all(),many=True).data
         data ={
+            'customers':customers,
             'service_type':service_type,
             'unit_of_measure ':unit_of_measure,
             'rig_master':rig_master,
@@ -60,40 +58,6 @@ class MasterDataView(APIView):
             'survey_type':survey_type
         }
         return Response(data)
-# class EmployeeJobListAPIView(generics.ListAPIView):
-#     serializer_class = JobInfoSerializer
-    
-
-#     def get_queryset(self):
-#         return JobInfo.objects.filter(job_number__assign_to=self.request.user.employee)
-
-
-
-# class UploadExcelView(APIView):
-    
-#     def post(self, request, *args, **kwargs):
-#         file = request.FILES.get('file')
-        
-#         if file is None:
-#             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-#         try:
-#             df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
-#         except Exception as e:
-#             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
-#         for _, row in df.iterrows():
-#             data = {
-#                 "depth": row.get("depth"),
-#                 "Inc": row.get("Inc"),
-#                 "AzG": row.get("AzG"),  
-#             }
-#             serializer = SurveyInitialDataSerializer(data=data)
-#             if serializer.is_valid():
-#                 serializer.save()
-#             else:
-#                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-#         return Response({"status": "success"}, status=status.HTTP_201_CREATED)
 
 class UploadExcelView(APIView):
     def post(self, request, *args, **kwargs):
@@ -124,7 +88,6 @@ class UploadExcelView(APIView):
         except SurveyTypes.DoesNotExist:
             return Response({"error": "Survey type not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Retrieve the WellInfo instance for the given job_number
         try:
             well_info = WellInfo.objects.get(job_number=job)
         except WellInfo.DoesNotExist:
@@ -135,8 +98,15 @@ class UploadExcelView(APIView):
         errors = []
         success_count = 0
         results = []
+        # score_mapping = {
+        #     "high": 1.5,
+        #     "good": 1.2,
+        #     "low": 1,
+        #     "n/c": 0
+        # }
+        # total_g_t_score = 0
+        # total_w_t_score = 0
 
-        # Loop through each row in the Excel file
         for index, row in df.iterrows():
             try:
                 depth = row.get("depth")
@@ -165,9 +135,19 @@ class UploadExcelView(APIView):
                 else:
                     w_t_status = "n/c"
 
+                # current_g_t_score = score_mapping[g_t_status]
+                # current_w_t_score = score_mapping[w_t_status]
+
+                # total_g_t_score += current_g_t_score
+                # total_w_t_score += current_w_t_score
+
                 if g_t_status == "good" and w_t_status == "good":
                     overall_status = "PASS"
                 elif (g_t_status == "good" and w_t_status == "high") or (g_t_status == "high" and w_t_status == "good"):
+                    overall_status = "PASS"
+                elif (g_t_status == "low" and w_t_status == "high") or (g_t_status == "high" and w_t_status == "low"):
+                    overall_status = "PASS"
+                elif (g_t_status == "low" and w_t_status == "low") or (g_t_status == "good" and w_t_status == "low"):
                     overall_status = "PASS"
                 elif g_t_status == "high" and w_t_status == "high":
                     overall_status = "PASS"
@@ -207,19 +187,26 @@ class UploadExcelView(APIView):
 
             except Exception as e:
                 errors.append({"row": index + 2, "error": str(e)})
-
-        # If there were any errors, return partial success
+            # delta_TGF_PER = round((total_g_t_score / len(df)) * 100, 2) if len(df) > 0 else 0
+            # delta_TWT_PER = round((total_w_t_score / len(df)) * 100, 2) if len(df) > 0 else 0
         if errors:
             return Response({
                 "status": "partial success",
                 "success_count": success_count,
+                # "delta_TGF_PER": delta_TGF_PER,
+                # "delta_TWT_PER": delta_TWT_PER,
+                # "total_g_t_score": total_g_t_score,
+                # "total_w_t_score":total_w_t_score,
                 "results": results,
-                "errors": errors
+                "errors": errors,
+                
             }, status=status.HTTP_207_MULTI_STATUS)
-
-        # Return full success if all rows processed successfully
         return Response({
             "status": "success",
             "success_count": success_count,
-            "results": results
+            # "delta_TGF_PER": delta_TGF_PER,
+            # "delta_TWT_PER": delta_TWT_PER,
+            # "total_g_t_score": total_g_t_score,
+            # "total_w_t_score":total_w_t_score,
+            "results": results,
         }, status=status.HTTP_201_CREATED)
