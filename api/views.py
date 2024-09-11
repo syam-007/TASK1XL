@@ -1,30 +1,34 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from  .serializer import CustomerSerializer,UnitOfMeasureSeializer,JobInfoSerializer,JodDetailSerializer,ServiceTypeSerializer,RigMasterSerilalizer,WelltypeSerializer,ToolTypeSerializer,HoleSectionSerializer,SurveyTypeSerializer,CreateJobSerializer,WellInfoSerializer
+from  .serializer import CustomerSerializer,UnitOfMeasureSeializer,JobInfoSerializer,JodDetailSerializer,ServiceTypeSerializer,RigMasterSerilalizer,WelltypeSerializer,ToolTypeSerializer,HoleSectionSerializer,SurveyTypeSerializer,CreateJobSerializer,WellInfoSerializer,EmployeeSerializer
 from rest_framework.viewsets import ModelViewSet
-from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo
+from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 import pandas as pd
 from io import BytesIO
 from rest_framework import status
 from rest_framework.exceptions import NotFound
+from rest_framework.permissions import IsAdminUser
 
 class JobViewSet(ModelViewSet):
     queryset = JobInfo.objects.all()
     serializer_class = JobInfoSerializer
     lookup_field = 'job_number'
-    def get_object(self):
-        job_number = self.kwargs.get(self.lookup_field)
-        try:
-            job = CreateJob.objects.get(job_number=job_number)
-            return JobInfo.objects.get(job_number=job)
-        except CreateJob.DoesNotExist:
-            raise NotFound(f"Job with job_number {job_number} does not exist.")
-        except JobInfo.DoesNotExist:
-            raise NotFound(f"JobInfo for job_number {job_number} does not exist.")
 
+    # def get_object(self):
+    #     job_number = self.kwargs.get(self.lookup_field)
+    #     try:
+    #         job = CreateJob.objects.get(job_number=job_number)
+    #         return JobInfo.objects.get(job_number=job)
+    #     except CreateJob.DoesNotExist:
+    #         raise NotFound(f"Job with job_number {job_number} does not exist.")
+    #     except JobInfo.DoesNotExist:
+    #         raise NotFound(f"JobInfo for job_number {job_number} does not exist.")
+class EmployeeViewSet(ModelViewSet):
+    queryset = EmployeeMaster.objects.all()
+    serializer_class = EmployeeSerializer
 class CustomerDetailViewSet(ModelViewSet):
     queryset = CustomerMaster.objects.all()
     serializer_class = CustomerSerializer
@@ -32,6 +36,8 @@ class CustomerDetailViewSet(ModelViewSet):
 class CreateJobViewSet(ModelViewSet):
     queryset = CreateJob.objects.all()
     serializer_class = CreateJobSerializer
+    
+    
 
 class WellinfoViewSet(ModelViewSet):
     queryset = WellInfo.objects.all()
@@ -210,3 +216,4 @@ class UploadExcelView(APIView):
             # "total_w_t_score":total_w_t_score,
             "results": results,
         }, status=status.HTTP_201_CREATED)
+    

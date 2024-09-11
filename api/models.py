@@ -1,5 +1,5 @@
 from django.db import models
-from core.models import User
+from django.conf import settings
 import math
 
 
@@ -47,9 +47,9 @@ class EmployeeMaster(models.Model):
     id = models.AutoField(primary_key=True)
     emp_id = models.CharField(max_length=255,unique=True)
     emp_name = models.CharField(max_length=255)
-    emp_short_name = models.CharField(max_length=255)
-    emp_designation = models.CharField(max_length=255)
-    
+    emp_short_name = models.CharField(max_length=255,null=True)
+    emp_designation = models.CharField(max_length=255,null=True)
+   
 
     def __str__(self) -> str:
         return self.emp_name
@@ -86,20 +86,16 @@ class SurveyTypes(models.Model):
 class CreateJob(models.Model):
     job_number = models.CharField(max_length=255,unique=True,primary_key=True)
     service = models.ForeignKey(ServiceType,on_delete=models.PROTECT)
-    assign_to = models.ForeignKey(EmployeeMaster,on_delete=models.PROTECT)
+    assign_to = models.ForeignKey(EmployeeMaster,on_delete=models.PROTECT,db_column='assign_to')
     location = models.CharField(max_length=255)
     customer = models.ForeignKey(CustomerMaster,on_delete=models.PROTECT)
-    rig_number = models.ForeignKey(RigMaster,on_delete=models.PROTECT)
-    unit_of_measure = models.ForeignKey(UnitofMeasureMaster,on_delete=models.PROTECT)
+    rig_number = models.ForeignKey(RigMaster,on_delete=models.PROTECT,db_column='rig_number')
+    unit_of_measure = models.ForeignKey(UnitofMeasureMaster,on_delete=models.PROTECT,db_column='unit_of_measure')
     estimated_date = models.DateTimeField()
     job_created_date = models.DateTimeField(auto_now=True)
     job_assign_date = models.DateTimeField(auto_now=True)
-
     class Meta:
         db_table = 'task_create_job'
-        # permissions = [
-        #     ('cancel_job','can cancel job')
-        # ]
 
 class JobInfo(models.Model):
     job_number = models.ForeignKey(CreateJob, on_delete=models.PROTECT, db_column='job_number')
@@ -233,12 +229,12 @@ class SurveyInfo(models.Model):
         super(SurveyInfo, self).save(*args, **kwargs)
    
 class TieOnInformation(models.Model):
-    measured_depth = models.IntegerField()
-    true_vertical_depth = models.IntegerField()
-    inclination = models.IntegerField()
-    latitude = models.IntegerField()
-    azimuth = models.IntegerField()
-    departure = models.IntegerField()
+    measured_depth = models.DecimalField(max_digits=6,decimal_places=2)
+    true_vertical_depth = models.DecimalField(max_digits=6,decimal_places=2)
+    inclination = models.DecimalField(max_digits=6,decimal_places=2)
+    latitude = models.DecimalField(max_digits=6,decimal_places=2)
+    azimuth = models.DecimalField(max_digits=6,decimal_places=2)
+    departure = models.DecimalField(max_digits=6,decimal_places=2)
     job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT,db_column='job_number')
     class Meta:
         db_table = 'task_survey_tie_on_info'
@@ -270,7 +266,6 @@ class SurveyInitialDataDetail(models.Model):
 
     class Meta:
         db_table = 'task_survey_initial_data_detail'
-
 
 
 

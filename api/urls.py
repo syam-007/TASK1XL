@@ -9,7 +9,7 @@ router.register('customer',views.CustomerDetailViewSet)
 router.register('job',views.JobViewSet)
 router.register('create-job',views.CreateJobViewSet)
 router.register('well-info',views.WellinfoViewSet)
-
+router.register('employee',views.EmployeeViewSet)
 
 
 urlpatterns = [
