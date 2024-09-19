@@ -293,8 +293,8 @@ class SurveyCalculationDetailsView(APIView):
         previous_azimuth = None
         previous_measured_depth = None
         previous_tvd = None
-        previous_latitude = None  # Track previous latitude (Northing +N/-S)
-        previous_departure = None  # Track previous departure (East +E/-W)
+        previous_latitude = None 
+        previous_departure = None 
 
         for survey_header in survey_headers:
             previous_measured_depth = survey_header.depth
@@ -302,7 +302,7 @@ class SurveyCalculationDetailsView(APIView):
             previous_azimuth = survey_header.azimuth
             previous_tvd = survey_header.true_vertical_depth
             previous_latitude = survey_header.latitude
-            previous_departure = survey_header.departure  # Initialize previous departure
+            previous_departure = survey_header.departure  
 
             SurveyCalculationDetails.objects.create(
                 header_id=survey_header,
@@ -374,7 +374,7 @@ class SurveyCalculationDetailsView(APIView):
                     else:
                         tvd = None
 
-                    # Latitude Calculation (+N/-S)
+                   
                     if previous_latitude is not None and ratio_factor is not None and CL is not None:
                         latitude = float(previous_latitude) + (
                             float(ratio_factor) * float(CL) / 2 *
@@ -384,7 +384,7 @@ class SurveyCalculationDetailsView(APIView):
                     else:
                         latitude = None
 
-                    # Departure Calculation (+E/-W)
+                    
                     if previous_departure is not None and ratio_factor is not None and CL is not None:
                         departure = float(previous_departure) + (
                             float(ratio_factor) * float(CL) / 2 *
@@ -394,16 +394,16 @@ class SurveyCalculationDetailsView(APIView):
                     else:
                         departure = None
 
-                    # Closure Distance Calculation using the formula (H13^2 + I13^2)^0.5
+                   
                     if latitude is not None and departure is not None:
                         closure_distance = math.sqrt(float(latitude)**2 + float(departure)**2)
                     else:
                         closure_distance = None
 
-                    # Closure Direction Calculation
+                    
                     if previous_latitude is not None and previous_departure is not None:
                         try:
-                            atan_value = math.atan2(float(departure), float(latitude))  # ATAN(I13/H13)
+                            atan_value = math.atan2(float(departure), float(latitude)) 
                             if float(latitude) < 0:
                                 closure_direction = 180 + math.degrees(atan_value)
                             elif float(latitude) > 0 and float(departure) > 0:
@@ -411,15 +411,15 @@ class SurveyCalculationDetailsView(APIView):
                             else:
                                 closure_direction = 360 + math.degrees(atan_value)
                         except ZeroDivisionError:
-                            closure_direction = None  # Handle case where latitude is 0
+                            closure_direction = None  
                     else:
                         closure_direction = None
 
-                    # Convert CL and dog_leg to float if they are Decimal
+                    
                     CL = float(CL) if isinstance(CL, decimal.Decimal) else CL
                     dog_leg = float(dog_leg) if isinstance(dog_leg, decimal.Decimal) else dog_leg
 
-                    # **DLS Calculation**: DLS = (dog_leg * 30) / CL or DLS = (dog_leg * 100) / CL
+                   
                     if dog_leg is not None and CL != 0:
                         dls_30 = round((dog_leg * 30) / float(CL),2)
                         dls_100 = (dog_leg * 100) / float(CL)
@@ -427,7 +427,7 @@ class SurveyCalculationDetailsView(APIView):
                         dls_30 = None
                         dls_100 = None
 
-                    # Save the calculation detail
+                    
                     calculation_detail = SurveyCalculationDetails.objects.create(
                         header_id=survey_header,
                         measured_depth=current_measured_depth,
@@ -435,11 +435,11 @@ class SurveyCalculationDetailsView(APIView):
                         azimuth=current_azimuth,
                         tvd=tvd,
                         Vertical_Section=0,
-                        latitude=latitude,  # Save the calculated latitude
-                        departure=departure,  # Save the calculated departure
-                        DLS=dls_30,  # Save the calculated DLS (you can use either dls_30 or dls_100)
-                        closure_distance=closure_distance,  # Save the calculated closure distance
-                        closure_direction=closure_direction,  # Save the calculated closure direction
+                        latitude=latitude,  
+                        departure=departure,  
+                        DLS=dls_30, 
+                        closure_distance=closure_distance,  
+                        closure_direction=closure_direction, 
                         CL=CL,
                         dog_leg=dog_leg,
                         ratio_factor=ratio_factor
@@ -451,21 +451,21 @@ class SurveyCalculationDetailsView(APIView):
                         "dog_leg": dog_leg,
                         "ratio_factor": ratio_factor,
                         "tvd": tvd,
-                        "latitude": latitude,  # Append latitude to the result
-                        "departure": departure,  # Append departure to the result
-                        "closure_distance": closure_distance,  # Append closure distance to the result
+                        "latitude": latitude, 
+                        "departure": departure, 
+                        "closure_distance": closure_distance,  
                         "closure_direction": closure_direction,
                         "DLS": dls_30 
-                          # Append closure direction to the result
+                          
                     })
 
-                    # Update previous values
+                   
                     previous_measured_depth = current_measured_depth
                     previous_inclination = current_inclination
                     previous_azimuth = current_azimuth
                     previous_tvd = tvd
-                    previous_latitude = latitude  # Track previous latitude
-                    previous_departure = departure  # Track previous departure
+                    previous_latitude = latitude  
+                    previous_departure = departure 
 
                 except Exception as e:
                     return Response({"error": f"Failed to create calculation detail for depth {initial_data.depth}: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -474,4 +474,5 @@ class SurveyCalculationDetailsView(APIView):
             "status": "success",
             "message": "Survey calculation details created successfully",
             "results": results
+            
         }, status=status.HTTP_201_CREATED)
