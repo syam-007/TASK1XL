@@ -7,6 +7,7 @@ from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMa
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 import pandas as pd
+import decimal
 from io import BytesIO
 from rest_framework import status
 from rest_framework.exceptions import NotFound
@@ -266,13 +267,6 @@ class SurveyCalculationView(APIView):
         except Exception as e:
             return Response({"error": f"Error creating SurveyCalculationHeader: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-
-import math
-import decimal  # Import decimal to handle decimal.Decimal types
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .models import CreateJob, SurveyCalculationHeader, SurveyCalculationDetails, SurveyInitialDataDetail
 
 class SurveyCalculationDetailsView(APIView):
 
