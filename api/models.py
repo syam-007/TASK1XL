@@ -49,7 +49,6 @@ class EmployeeMaster(models.Model):
     emp_name = models.CharField(max_length=255)
     emp_short_name = models.CharField(max_length=255,null=True)
     emp_designation = models.CharField(max_length=255,null=True)
-   
 
     def __str__(self) -> str:
         return self.emp_name
@@ -197,8 +196,6 @@ class WellInfo(models.Model):
         return round(self.get_G_t - 10,2) 
 
 
-
-
 class SurveyInfo(models.Model):
     survey_info_id = models.AutoField(primary_key=True)
     run_name = models.CharField(max_length=3)
@@ -240,10 +237,9 @@ class TieOnInformation(models.Model):
         db_table = 'task_survey_tie_on_info'
     
 
-
 class SurveyInitialDataHeader(models.Model):
     id = models.AutoField(primary_key=True)
-    job_number = models.ForeignKey(CreateJob,on_delete = models.CASCADE,db_column='job_number')
+    job_number = models.ForeignKey(CreateJob,on_delete = models.CASCADE,db_column='job_number',unique=True)
     survey_type = models.ForeignKey(SurveyTypes,on_delete = models.CASCADE,db_column='survey_type')
     survey_date = models.DateField(auto_now_add=True)
     class Meta:
@@ -266,6 +262,43 @@ class SurveyInitialDataDetail(models.Model):
 
     class Meta:
         db_table = 'task_survey_initial_data_detail'
+
+class SurveyCalculationHeader(models.Model):
+    job_number = models.ForeignKey(CreateJob,on_delete=models.CASCADE,db_column='job_number')
+    depth  = models.DecimalField(max_digits=6,decimal_places=2)
+    inclination = models.DecimalField(max_digits=3,decimal_places=2)
+    azimuth = models.DecimalField(max_digits=6,decimal_places=2)
+    Vertical_Section = models.DecimalField(max_digits=3,decimal_places=2)
+    true_vertical_depth = models.DecimalField(max_digits=5,decimal_places=2,db_column='TVD')
+    latitude = models.DecimalField(max_digits=3,decimal_places=2,db_column="+N/-S")
+    departure = models.DecimalField(max_digits=3,decimal_places=2,db_column="+E/-W")
+    DLS = models.DecimalField(max_digits=4,decimal_places=2,null=True)
+    closure_distance= models.DecimalField(max_digits=4,decimal_places=2)
+    closure_direction = models.DecimalField(max_digits=4,decimal_places=2)
+    CL = models.DecimalField(max_digits=4,decimal_places=2,null=True)
+    dog_leg = models.DecimalField(max_digits=6,decimal_places=5,null=True)
+    ratio_factor = models.DecimalField(max_digits=6,decimal_places=5,null=True)
+
+    class Meta:
+        db_table = 'task_survey_calculation_header'
+
+class SurveyCalculationDetails(models.Model):
+    header_id = models.ForeignKey(SurveyCalculationHeader,on_delete=models.CASCADE,db_column='header_id')
+    measured_depth = models.DecimalField(max_digits=6,decimal_places=2)
+    inclination = models.DecimalField(max_digits=3,decimal_places=2)
+    azimuth = models.DecimalField(max_digits=3,decimal_places=2)
+    tvd = models.DecimalField(max_digits=5,decimal_places=2,null=True)
+    Vertical_Section = models.DecimalField(max_digits=3,decimal_places=2)
+    latitude = models.DecimalField(max_digits=3,decimal_places=2,db_column="+N/-S")
+    departure = models.DecimalField(max_digits=3,decimal_places=2,db_column="+E/-W")
+    DLS = models.DecimalField(max_digits=4,decimal_places=2,null=True)
+    closure_distance= models.DecimalField(max_digits=4,decimal_places=2)
+    closure_direction = models.DecimalField(max_digits=4,decimal_places=2)
+    CL = models.DecimalField(max_digits=4,decimal_places=2,null=True)
+    dog_leg = models.DecimalField(max_digits=6,decimal_places=5,null=True)
+    ratio_factor = models.DecimalField(max_digits=6,decimal_places=5,null=True)
+    class Meta:
+        db_table = 'task_survey_calculation_details'
 
 
 

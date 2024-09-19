@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (JobInfo,CustomerMaster,UnitofMeasureMaster,
                      ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,
-                     SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail,WellInfo)
+                     SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail,WellInfo,SurveyCalculationHeader,SurveyCalculationDetails,SurveyInfo)
 
 
 class ServiceTypeSerializer(serializers.ModelSerializer):
@@ -33,18 +33,22 @@ class WelltypeSerializer(serializers.ModelSerializer):
     class Meta:
         model= WelltypeMaster
         fields=['id','well_type']
+
 class WelltypeSerializer(serializers.ModelSerializer):
     class Meta:
         model= WelltypeMaster
         fields=['id','well_type']
+
 class ToolTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model= ToolMaster
         fields=['id','type_of_tools']
+
 class HoleSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model= HoleSection
         fields=['id','hole_section','survey_run_in','minimum_id']
+        
 class SurveyTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model= SurveyTypes
@@ -75,6 +79,10 @@ class SurveyInitialDataSerializer(serializers.ModelSerializer):
      class Meta:
          model = SurveyInitialDataDetail
          fields = '__all__'
+class SurveyInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SurveyInfo
+        fields = '__all__'
 class WellInfoSerializer(serializers.ModelSerializer):
     north_coordinates = serializers.SerializerMethodField()
     east_coorinates = serializers.SerializerMethodField()
@@ -104,4 +112,12 @@ class WellInfoSerializer(serializers.ModelSerializer):
         return obj. max_G_t
     def get_min_gt(self,obj):
         return obj. min_G_t
-    
+
+class SurveyCalculationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SurveyCalculationHeader
+        fields = '__all__'
+class SurveyCalculationDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SurveyCalculationDetails
+        fields='__all__'
