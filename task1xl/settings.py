@@ -38,8 +38,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "corsheaders",
     "rest_framework",
+    'corsheaders',
     'djoser',
     "api",
     "core",
@@ -48,8 +48,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -80,17 +80,6 @@ WSGI_APPLICATION = "task1xl.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": "taskxldb",
-        "HOST":"task1xl19sepmicro.ch04ewciazz0.me-central-1.rds.amazonaws.com",
-        "USER":"admin",
-        "PORT":"3306",
-        "PASSWORD":"password"
-    }
-}
-
 # DATABASES = {
 #     "default": {
 #         "ENGINE": "django.db.backends.mysql",
@@ -102,9 +91,11 @@ DATABASES = {
 #     }
 # }
 
-CORS_ORGIN_ALLOW_ALL = True
+DATABASES = {    "default": {        "ENGINE": "django.db.backends.mysql",        "NAME": "taskxldb",        "HOST":"task1xl19sepmicro.ch04ewciazz0.me-central-1.rds.amazonaws.com",        "USER":"admin",        "PORT":"3306",        "PASSWORD":"password"    }}
+CORS_ORIGIN_ALLOW_ALL = True
 
-CSRF_TRUSED_ORIGINS = []
+CSRF_TRUSTED_ORIGINS = []
+
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
@@ -157,10 +148,10 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
     "ACCESS_TOKEN_LIFETIME": timedelta(days=5)
     }
+
 DJOSER = {
     'SERIALIZERS':{
         'user_create':'core.serializers.UserCreateSerializer',
         'current_user':'core.serializers.UserSerializer'
     }
 }
-
