@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (JobInfo,CustomerMaster,UnitofMeasureMaster,
                      ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,
-                     SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail,WellInfo,SurveyCalculationHeader,SurveyCalculationDetails,SurveyInfo)
+                     SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail,WellInfo,SurveyCalculationHeader,SurveyCalculationDetails,SurveyInfo, TieOnInformation)
 
 
 class ServiceTypeSerializer(serializers.ModelSerializer):
@@ -74,7 +74,10 @@ class JodDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model=JobInfo
         fields="__all__"
-
+class  TieOnInformationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TieOnInformation
+        fields = '__all__'
 class SurveyInitialDataSerializer(serializers.ModelSerializer):
      class Meta:
          model = SurveyInitialDataDetail

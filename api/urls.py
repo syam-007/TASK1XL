@@ -11,6 +11,7 @@ router.register('create-job',views.CreateJobViewSet)
 router.register('well-info',views.WellinfoViewSet)
 router.register('employee',views.EmployeeViewSet)
 router.register('surveyinfo',views.SurveyInfoSerializer)
+router.register('tieoninfo',views.TieOnInformationView)
 
 
 urlpatterns = [

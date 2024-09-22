@@ -1,9 +1,9 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from  .serializer import CustomerSerializer,UnitOfMeasureSeializer,JobInfoSerializer,JodDetailSerializer,ServiceTypeSerializer,RigMasterSerilalizer,WelltypeSerializer,ToolTypeSerializer,HoleSectionSerializer,SurveyTypeSerializer,CreateJobSerializer,WellInfoSerializer,EmployeeSerializer,SurveyInitialDataSerializer,SurveyCalculationSerializer,SurveyCalculationDetailSerializer,SurveyInfoSerializer
+from  .serializer import CustomerSerializer,UnitOfMeasureSeializer,JobInfoSerializer,JodDetailSerializer,ServiceTypeSerializer,RigMasterSerilalizer,WelltypeSerializer,ToolTypeSerializer,HoleSectionSerializer,SurveyTypeSerializer,CreateJobSerializer,WellInfoSerializer,EmployeeSerializer,SurveyInitialDataSerializer,SurveyCalculationSerializer,SurveyCalculationDetailSerializer,SurveyInfoSerializer,TieOnInformationSerializer
 from rest_framework.viewsets import ModelViewSet
-from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,SurveyInfo
+from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,SurveyInfo,TieOnInformation
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 import pandas as pd
@@ -13,6 +13,8 @@ from rest_framework import status
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAdminUser
 import math
+from django.db.models import Sum
+
 
 class JobViewSet(ModelViewSet):
     queryset = JobInfo.objects.all()
@@ -48,6 +50,10 @@ class SurveyInfoSerializer(ModelViewSet):
     queryset = SurveyInfo.objects.all()
     serializer_class = SurveyInfoSerializer
 
+class TieOnInformationView(ModelViewSet):
+    queryset = TieOnInformation.objects.all()
+    serializer_class = TieOnInformationSerializer
+
 class MasterDataView(APIView):
     def get(self,request):
         customers = CustomerSerializer(CustomerMaster.objects.all(),many=True).data
@@ -77,23 +83,48 @@ class UploadExcelView(APIView):
             try:
                 job = CreateJob.objects.get(job_number=job_number)
                 queryset = SurveyInitialDataDetail.objects.filter(job_number=job)
+
                 if not queryset.exists():
                     return Response({"error": f"No data found for job_number {job_number}"}, status=status.HTTP_404_NOT_FOUND)
+
+                # Calculate the scores and percentages
+                total_g_t_difference_pass = queryset.filter(status='PASS').aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
+                total_w_t_difference_pass = queryset.filter(status='PASS').aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
+                total_g_t_difference = queryset.aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
+                total_w_t_difference = queryset.aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
+
+                g_t_score = f"{total_g_t_difference_pass:.2f} / {total_g_t_difference:.2f}"
+                w_t_score = f"{total_w_t_difference_pass:.2f} / {total_w_t_difference:.2f}"
+                g_t_percentage = (total_g_t_difference_pass / total_g_t_difference * 100) if total_g_t_difference else 0
+                w_t_percentage = (total_w_t_difference_pass / total_w_t_difference * 100) if total_w_t_difference else 0
+
                 serializer = SurveyInitialDataSerializer(queryset, many=True)
-                return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response({
+                    "status": "success",
+                    "success_count": queryset.count(),
+                    "g_t_score": g_t_score,
+                    "w_t_score": w_t_score,
+                    "g_t_percentage": f"{g_t_percentage:.2f}%",
+                    "w_t_percentage": f"{w_t_percentage:.2f}%",
+                    "results": serializer.data,
+                }, status=status.HTTP_200_OK)
+
             except CreateJob.DoesNotExist:
                 return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
+
         else:
             queryset = SurveyInitialDataDetail.objects.all()
             serializer = SurveyInitialDataSerializer(queryset, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
     def post(self, request, *args, **kwargs):
         file = request.FILES.get('file')
         job_number = request.data.get('job_number')  
         survey_type_id = request.data.get('survey_type')
+        
         if file is None:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
             df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
         except Exception as e:
@@ -125,6 +156,12 @@ class UploadExcelView(APIView):
         success_count = 0
         results = []
 
+        # Initialize sums for "PASS" status
+        total_g_t_difference_pass = 0
+        total_w_t_difference_pass = 0
+        total_g_t_difference = 0
+        total_w_t_difference = 0
+
         for index, row in df.iterrows():
             try:
                 depth = row.get("depth")
@@ -132,8 +169,12 @@ class UploadExcelView(APIView):
                 azg = row.get("AzG")
                 g_t = row.get("G(t)")
                 w_t = row.get("W(t)")
-                g_t_difference = round(well_info.get_G_t - g_t,2)
-                w_t_difference = round(well_info.get_W_t - w_t,2)
+                g_t_difference = round(well_info.get_G_t - g_t, 2)
+                w_t_difference = round(well_info.get_W_t - w_t, 2)
+
+                # Update totals
+                total_g_t_difference += g_t_difference
+                total_w_t_difference += w_t_difference
 
                 if -1 <= g_t_difference <= 1:
                     g_t_status = "high"
@@ -153,6 +194,7 @@ class UploadExcelView(APIView):
                 else:
                     w_t_status = "n/c"
 
+                # Determine overall status
                 if g_t_status == "good" and w_t_status == "good":
                     overall_status = "PASS"
                 elif (g_t_status == "good" and w_t_status == "high") or (g_t_status == "high" and w_t_status == "good"):
@@ -165,6 +207,11 @@ class UploadExcelView(APIView):
                     overall_status = "PASS"
                 else:
                     overall_status = "REMOVE"
+
+                # Accumulate sums only if status is "PASS"
+                if overall_status == "PASS":
+                    total_g_t_difference_pass += g_t_difference
+                    total_w_t_difference_pass += w_t_difference
 
                 detail = SurveyInitialDataDetail.objects.create(
                     header=survey_header,
@@ -198,20 +245,38 @@ class UploadExcelView(APIView):
 
             except Exception as e:
                 errors.append({"row": index + 2, "error": str(e)})
+
+        # Create score strings
+        g_t_score = f"{total_g_t_difference_pass:.2f} / {total_g_t_difference:.2f}"
+        w_t_score = f"{total_w_t_difference_pass:.2f} / {total_w_t_difference:.2f}"
+
+        # Calculate percentages
+        g_t_percentage = (total_g_t_difference_pass / total_g_t_difference * 100) if total_g_t_difference else 0
+        w_t_percentage = (total_w_t_difference_pass / total_w_t_difference * 100) if total_w_t_difference else 0
+
         if errors:
             return Response({
                 "status": "partial success",
                 "success_count": success_count,
                 "results": results,
                 "errors": errors,
-                
+                "g_t_score": g_t_score,
+                "w_t_score": w_t_score,
+                "g_t_percentage": f"{g_t_percentage:.2f}%",
+                "w_t_percentage": f"{w_t_percentage:.2f}%",
             }, status=status.HTTP_207_MULTI_STATUS)
+        
         return Response({
             "status": "success",
             "success_count": success_count,
+            "g_t_score": g_t_score,
+            "w_t_score": w_t_score,
+            "g_t_percentage": f"{g_t_percentage:.2f}%",
+            "w_t_percentage": f"{w_t_percentage:.2f}%",
             "results": results,
         }, status=status.HTTP_201_CREATED)
-    
+
+
 class SurveyCalculationView(APIView):
     def get(self,request):
         queryset = SurveyCalculationHeader.objects.all()
@@ -267,7 +332,6 @@ class SurveyCalculationView(APIView):
         except Exception as e:
             return Response({"error": f"Error creating SurveyCalculationHeader: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-
 class SurveyCalculationDetailsView(APIView):
 
     def post(self, request, *args, **kwargs):
@@ -288,7 +352,14 @@ class SurveyCalculationDetailsView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        try:
+            survey_info = SurveyInfo.objects.get(job_number=job)
+            proposal_direction = survey_info.proposal_direction 
+        except SurveyInfo.DoesNotExist:
+            proposal_direction = None  
+
         results = []
+        max_inclination = float('-inf')  #
         previous_inclination = None
         previous_azimuth = None
         previous_measured_depth = None
@@ -303,6 +374,10 @@ class SurveyCalculationDetailsView(APIView):
             previous_tvd = survey_header.true_vertical_depth
             previous_latitude = survey_header.latitude
             previous_departure = survey_header.departure  
+
+            # Update the maximum inclination
+            if previous_inclination is not None:
+                max_inclination = max(max_inclination, previous_inclination)
 
             SurveyCalculationDetails.objects.create(
                 header_id=survey_header,
@@ -320,12 +395,20 @@ class SurveyCalculationDetailsView(APIView):
                 dog_leg=None,
                 ratio_factor=survey_header.ratio_factor
             )
-
             results.append({
                 "measured_depth": previous_measured_depth,
+                "inclination": previous_inclination,
+                "azimuth": previous_azimuth,
                 "CL": survey_header.CL,
+                "dog_leg": survey_header.dog_leg,
+                "ratio_factor": survey_header.ratio_factor,
+                "tvd": survey_header.true_vertical_depth,
+                "latitude": survey_header.latitude,
+                "departure": survey_header.departure,
                 "closure_distance": survey_header.closure_distance,
-                "dog_leg": survey_header.dog_leg
+                "closure_direction": survey_header.closure_direction,
+                "DLS": survey_header.DLS,
+                "Vertical_Section": survey_header.Vertical_Section
             })
 
             initial_data_details = SurveyInitialDataDetail.objects.filter(job_number=job).order_by('depth')
@@ -338,6 +421,9 @@ class SurveyCalculationDetailsView(APIView):
                     CL = current_measured_depth - previous_measured_depth
                     current_inclination = float(initial_data.Inc)
                     current_azimuth = float(initial_data.AzG)
+
+                    # Update max inclination
+                    max_inclination = max(max_inclination, current_inclination)
 
                     # Dog Leg Calculation
                     if previous_inclination is not None and previous_azimuth is not None:
@@ -364,82 +450,77 @@ class SurveyCalculationDetailsView(APIView):
                             ratio_factor = (2 / dog_leg) * math.degrees(math.tan(math.radians(dog_leg / 2)))
                     else:
                         ratio_factor = None
-
-                    # TVD Calculation
                     if previous_tvd is not None and ratio_factor is not None and CL is not None:
-                        tvd = float(previous_tvd) + (float(ratio_factor) * float(CL) / 2 * (
+                        tvd = round(float(previous_tvd) + (float(ratio_factor) * float(CL) / 2 * (
                             math.cos(math.radians(float(current_inclination))) +
-                            math.cos(math.radians(float(previous_inclination)))))
-                        tvd = round(tvd, 2)
+                            math.cos(math.radians(float(previous_inclination))))), 2)
                     else:
                         tvd = None
 
-                   
+                # Latitude Calculation (+N/-S)
                     if previous_latitude is not None and ratio_factor is not None and CL is not None:
-                        latitude = float(previous_latitude) + (
+                        latitude = round(float(previous_latitude) + (
                             float(ratio_factor) * float(CL) / 2 *
                             ((math.sin(math.radians(float(current_inclination))) * math.cos(math.radians(float(current_azimuth)))) +
-                             (math.sin(math.radians(float(previous_inclination))) * math.cos(math.radians(float(previous_azimuth))))))    
-                        latitude = round(latitude, 2)
+                            (math.sin(math.radians(float(previous_inclination))) * math.cos(math.radians(float(previous_azimuth)))))), 2)
                     else:
                         latitude = None
 
-                    
+                    # Departure Calculation (+E/-W)
                     if previous_departure is not None and ratio_factor is not None and CL is not None:
-                        departure = float(previous_departure) + (
+                        departure = round(float(previous_departure) + (
                             float(ratio_factor) * float(CL) / 2 *
                             ((math.sin(math.radians(float(current_inclination))) * math.sin(math.radians(float(current_azimuth)))) +
-                             (math.sin(math.radians(float(previous_inclination))) * math.sin(math.radians(float(previous_azimuth))))))
-                        departure = round(departure, 2)
+                            (math.sin(math.radians(float(previous_inclination))) * math.sin(math.radians(float(previous_azimuth)))))), 2)
                     else:
                         departure = None
 
-                   
+                    # Closure Distance
                     if latitude is not None and departure is not None:
-                        closure_distance = math.sqrt(float(latitude)**2 + float(departure)**2)
+                        closure_distance = round(math.sqrt(float(latitude)**2 + float(departure)**2), 2)
                     else:
                         closure_distance = None
 
-                    
-                    if previous_latitude is not None and previous_departure is not None:
+                    # Closure Direction
+                    if latitude is not None and departure is not None:
                         try:
                             atan_value = math.atan2(float(departure), float(latitude)) 
                             if float(latitude) < 0:
-                                closure_direction = 180 + math.degrees(atan_value)
+                                closure_direction = round(180 + math.degrees(atan_value), 2)
                             elif float(latitude) > 0 and float(departure) > 0:
-                                closure_direction = math.degrees(atan_value)
+                                closure_direction = round(math.degrees(atan_value), 2)
                             else:
-                                closure_direction = 360 + math.degrees(atan_value)
+                                closure_direction = round(360 + math.degrees(atan_value), 2)
                         except ZeroDivisionError:
                             closure_direction = None  
                     else:
                         closure_direction = None
 
                     
-                    CL = float(CL) if isinstance(CL, decimal.Decimal) else CL
-                    dog_leg = float(dog_leg) if isinstance(dog_leg, decimal.Decimal) else dog_leg
+                    # Vertical Section Calculation
+                    if proposal_direction is not None and closure_distance is not None and closure_direction is not None:
+                        vertical_section = round(closure_distance * math.cos(math.radians(float(proposal_direction) - closure_direction)), 2)
+                    else:
+                        vertical_section = None
 
-                   
+                    # Dog Leg Severity (DLS)
                     if dog_leg is not None and CL != 0:
-                        dls_30 = round((dog_leg * 30) / float(CL),2)
-                        dls_100 = (dog_leg * 100) / float(CL)
+                        dls_30 = round((dog_leg * 30) / float(CL), 2)
                     else:
                         dls_30 = None
-                        dls_100 = None
 
-                    
                     calculation_detail = SurveyCalculationDetails.objects.create(
                         header_id=survey_header,
                         measured_depth=current_measured_depth,
                         inclination=current_inclination,
                         azimuth=current_azimuth,
                         tvd=tvd,
-                        Vertical_Section=0,
-                        latitude=latitude,  
-                        departure=departure,  
-                        DLS=dls_30, 
-                        closure_distance=closure_distance,  
-                        closure_direction=closure_direction, 
+                        Vertical_Section=vertical_section,
+                        latitude=latitude,
+                        departure=departure,
+                        DLS=dls_30,
+                        closure_distance=closure_distance,
+                        closure_direction=closure_direction,
                         CL=CL,
                         dog_leg=dog_leg,
                         ratio_factor=ratio_factor
@@ -447,32 +528,48 @@ class SurveyCalculationDetailsView(APIView):
 
                     results.append({
                         "measured_depth": current_measured_depth,
+                        "inclination": current_inclination,
+                        "azimuth": current_azimuth,
                         "CL": CL,
                         "dog_leg": dog_leg,
                         "ratio_factor": ratio_factor,
                         "tvd": tvd,
-                        "latitude": latitude, 
-                        "departure": departure, 
-                        "closure_distance": closure_distance,  
+                        "latitude": latitude,
+                        "departure": departure,
+                        "closure_distance": closure_distance,
                         "closure_direction": closure_direction,
-                        "DLS": dls_30 
-                          
+                        "DLS": dls_30,
+                        "Vertical_Section": vertical_section  
                     })
 
-                   
+                 
                     previous_measured_depth = current_measured_depth
                     previous_inclination = current_inclination
                     previous_azimuth = current_azimuth
                     previous_tvd = tvd
-                    previous_latitude = latitude  
-                    previous_departure = departure 
+                    previous_latitude = latitude
+                    previous_departure = departure
 
                 except Exception as e:
-                    return Response({"error": f"Failed to create calculation detail for depth {initial_data.depth}: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    return Response({"error": f"Failed to create calculation detail for depth {initial_data.depth}: {str(e)}"},
+                                    status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+      
+        last_row_details = []
+        for survey_header in survey_headers:
+            last_row = SurveyCalculationDetails.objects.filter(header_id=survey_header).order_by('-id').first()
+            if last_row:
+                last_row_details.append({
+                    "header_id": survey_header.id,
+                    "closure_distance": last_row.closure_distance,
+                    "closure_direction": last_row.closure_direction,
+                    "vertical_section": last_row.Vertical_Section
+                })
 
         return Response({
             "status": "success",
             "message": "Survey calculation details created successfully",
+            "max_inclination": max_inclination,  
+            "last_rows": last_row_details, 
             "results": results
-            
         }, status=status.HTTP_201_CREATED)

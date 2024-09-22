@@ -154,7 +154,8 @@ class WellInfo(models.Model):
     GLE = models.DecimalField(max_digits=6,decimal_places=2)
     RKB = models.DecimalField(max_digits=3,decimal_places=2)
     ref_elivation = models.CharField(max_length=255)
-    ref_datum  = models.CharField(max_length=255) 
+    ref_datum  = models.CharField(max_length=255)
+
 
     class Meta:
         db_table = 'task_well_info'
@@ -214,7 +215,7 @@ class SurveyInfo(models.Model):
     geodetic_datum = models.CharField(max_length=255)
     start_depth = models.IntegerField()
     tag_depth = models.IntegerField()
-    proposal_direction = models.IntegerField()
+    proposal_direction = models.DecimalField(max_digits=6,decimal_places=2)
 
     class Meta:
         db_table = 'task_survey_info'
