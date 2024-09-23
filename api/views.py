@@ -246,11 +246,11 @@ class UploadExcelView(APIView):
             except Exception as e:
                 errors.append({"row": index + 2, "error": str(e)})
 
-        # Create score strings
+       
         g_t_score = f"{total_g_t_difference_pass:.2f} / {total_g_t_difference:.2f}"
         w_t_score = f"{total_w_t_difference_pass:.2f} / {total_w_t_difference:.2f}"
 
-        # Calculate percentages
+       
         g_t_percentage = (total_g_t_difference_pass / total_g_t_difference * 100) if total_g_t_difference else 0
         w_t_percentage = (total_w_t_difference_pass / total_w_t_difference * 100) if total_w_t_difference else 0
 
@@ -333,6 +333,27 @@ class SurveyCalculationView(APIView):
             return Response({"error": f"Error creating SurveyCalculationHeader: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class SurveyCalculationDetailsView(APIView):
+    def get(self,request,job_number=None):
+        
+        if job_number:
+            try:
+                job = CreateJob.objects.get(job_number=job_number)
+                queryset = SurveyCalculationDetails.objects.filter(job_number=job)
+
+                if not queryset.exists():
+                  return Response({"error": f"No data found for job_number {job_number}"}, status=status.HTTP_404_NOT_FOUND)
+                serializer = SurveyCalculationDetailSerializer(queryset, many=True)
+                return Response({
+                    "results": serializer.data,
+                }, status=status.HTTP_200_OK)
+
+            except CreateJob.DoesNotExist:
+                return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        else:
+            queryset =  SurveyCalculationDetails.objects.all()
+            serializer =  SurveyCalculationDetailSerializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
         job_number = request.data.get('job_number')
@@ -359,7 +380,7 @@ class SurveyCalculationDetailsView(APIView):
             proposal_direction = None  
 
         results = []
-        max_inclination = float('-inf')  #
+        max_inclination = float('-inf')  
         previous_inclination = None
         previous_azimuth = None
         previous_measured_depth = None
@@ -375,7 +396,7 @@ class SurveyCalculationDetailsView(APIView):
             previous_latitude = survey_header.latitude
             previous_departure = survey_header.departure  
 
-            # Update the maximum inclination
+           
             if previous_inclination is not None:
                 max_inclination = max(max_inclination, previous_inclination)
 

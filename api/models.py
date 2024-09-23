@@ -265,7 +265,7 @@ class SurveyInitialDataDetail(models.Model):
         db_table = 'task_survey_initial_data_detail'
 
 class SurveyCalculationHeader(models.Model):
-    job_number = models.ForeignKey(CreateJob,on_delete=models.CASCADE,db_column='job_number')
+    job_number = models.ForeignKey(CreateJob,on_delete=models.CASCADE,db_column='job_number', unique=True)
     depth  = models.DecimalField(max_digits=6,decimal_places=2)
     inclination = models.DecimalField(max_digits=3,decimal_places=2)
     azimuth = models.DecimalField(max_digits=6,decimal_places=2)
