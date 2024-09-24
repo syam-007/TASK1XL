@@ -20,15 +20,6 @@ class JobViewSet(ModelViewSet):
     queryset = JobInfo.objects.all()
     serializer_class = JobInfoSerializer
     lookup_field = 'job_number'
-    # def get_object(self):
-    #     job_number = self.kwargs.get(self.lookup_field)
-    #     try:
-    #         job = CreateJob.objects.get(job_number=job_number)
-    #         return JobInfo.objects.get(job_number=job)
-    #     except CreateJob.DoesNotExist:
-    #         raise NotFound(f"Job with job_number {job_number} does not exist.")
-    #     except JobInfo.DoesNotExist:
-    #         raise NotFound(f"JobInfo for job_number {job_number} does not exist.")
 
 class EmployeeViewSet(ModelViewSet):
     queryset = EmployeeMaster.objects.all()
@@ -41,18 +32,22 @@ class CustomerDetailViewSet(ModelViewSet):
 class CreateJobViewSet(ModelViewSet):
     queryset = CreateJob.objects.all()
     serializer_class = CreateJobSerializer
+    lookup_field = 'job_number'
     
 class WellinfoViewSet(ModelViewSet):
     queryset = WellInfo.objects.all()
     serializer_class = WellInfoSerializer
+    lookup_field = 'job_number'
 
 class SurveyInfoViewset(ModelViewSet):
     queryset = SurveyInfo.objects.all()
     serializer_class = SurveyInfoSerializer
+    lookup_field = 'job_number'
 
 class TieOnInformationView(ModelViewSet):
     queryset = TieOnInformation.objects.all()
     serializer_class = TieOnInformationSerializer
+    lookup_field = 'job_number'
 
 class MasterDataView(APIView):
     def get(self,request):
@@ -75,7 +70,6 @@ class MasterDataView(APIView):
             'survey_type':survey_type
         }
         return Response(data)
-
 
 class JobDetailsView(APIView):
     def get(self, request, job_number=None):
@@ -107,12 +101,7 @@ class JobDetailsView(APIView):
         return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
-
-
 class UploadExcelView(APIView):
-
     def get(self, request, job_number=None):
         if job_number:
             try:
