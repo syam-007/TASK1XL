@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from  .serializer import CustomerSerializer,UnitOfMeasureSeializer,JobInfoSerializer,JodDetailSerializer,ServiceTypeSerializer,RigMasterSerilalizer,WelltypeSerializer,ToolTypeSerializer,HoleSectionSerializer,SurveyTypeSerializer,CreateJobSerializer,WellInfoSerializer,EmployeeSerializer,SurveyInitialDataSerializer,SurveyCalculationSerializer,SurveyCalculationDetailSerializer,SurveyInfoSerializer,TieOnInformationSerializer
+from  .serializer import CustomerSerializer,UnitOfMeasureSeializer,JobInfoSerializer,JodDetailSerializer,ServiceTypeSerializer,RigMasterSerilalizer,WelltypeSerializer,ToolTypeSerializer,HoleSectionSerializer,SurveyTypeSerializer,CreateJobSerializer,WellInfoSerializer,EmployeeSerializer,SurveyInitialDataSerializer,SurveyCalculationSerializer,SurveyCalculationDetailSerializer,SurveyInfoSerializer,TieOnInformationSerializer, JobCreationSerializer
 from rest_framework.viewsets import ModelViewSet
 from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,SurveyInfo,TieOnInformation
 from rest_framework.permissions import IsAuthenticated
@@ -49,6 +49,15 @@ class TieOnInformationView(ModelViewSet):
     serializer_class = TieOnInformationSerializer
     lookup_field = 'job_number'
 
+class CombinedJobCreationView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = JobCreationSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()  
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class MasterDataView(APIView):
     def get(self,request):
         customers = CustomerSerializer(CustomerMaster.objects.all(),many=True).data

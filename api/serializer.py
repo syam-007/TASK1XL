@@ -116,6 +116,35 @@ class WellInfoSerializer(serializers.ModelSerializer):
     def get_min_gt(self,obj):
         return obj. min_G_t
 
+
+class JobCreationSerializer(serializers.Serializer):
+    job = CreateJobSerializer()  # Nested CreateJob serializer
+    well_info = WellInfoSerializer()  # Nested WellInfo serializer
+    survey_info = SurveyInfoSerializer()  # Nested SurveyInfo serializer
+    tie_on_info = TieOnInformationSerializer()  # Nested TieOnInformation serializer
+
+    def create(self, validated_data):
+        # Extract the nested data
+        job_data = validated_data.pop('job')
+        well_info_data = validated_data.pop('well_info')
+        survey_info_data = validated_data.pop('survey_info')
+        tie_on_info_data = validated_data.pop('tie_on_info')
+
+        # Create the Job object
+        job = CreateJob.objects.create(**job_data)
+
+        # Add the job reference to other objects before saving
+        well_info_data['job_number'] = job
+        survey_info_data['job_number'] = job
+        tie_on_info_data['job_number'] = job
+
+        # Create the related objects
+        WellInfo.objects.create(**well_info_data)
+        SurveyInfo.objects.create(**survey_info_data)
+        TieOnInformation.objects.create(**tie_on_info_data)
+
+        return job
+    
 class SurveyCalculationSerializer(serializers.ModelSerializer):
     class Meta:
         model = SurveyCalculationHeader
