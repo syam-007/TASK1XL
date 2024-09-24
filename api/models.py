@@ -199,7 +199,7 @@ class WellInfo(models.Model):
 
 class SurveyInfo(models.Model):
     survey_info_id = models.AutoField(primary_key=True)
-    run_name = models.CharField(max_length=3)
+    run_name = models.CharField(max_length=50)
     job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT,db_column='job_number')
     run_number = models.IntegerField()
     type_of_tool = models.ForeignKey(ToolMaster,on_delete=models.PROTECT)

@@ -118,11 +118,11 @@ class WellInfoSerializer(serializers.ModelSerializer):
 
 
 class JobCreationSerializer(serializers.Serializer):
-    job = CreateJobSerializer() 
+    job = JobInfoSerializer()
     well_info = WellInfoSerializer()  
     survey_info = SurveyInfoSerializer()  
     tie_on_info = TieOnInformationSerializer() 
-    job_info = JobInfoSerializer() 
+    
 
     def create(self, validated_data):
       
@@ -130,19 +130,20 @@ class JobCreationSerializer(serializers.Serializer):
         well_info_data = validated_data.pop('well_info')
         survey_info_data = validated_data.pop('survey_info')
         tie_on_info_data = validated_data.pop('tie_on_info')
-        job_info_data = validated_data.pop('job_info')
+       
 
 
         # Create the Job object
-        job = CreateJob.objects.create(**job_data)
+        job = JobInfo.objects.create(**job_data)
         well_info_data['job_number'] = job
         survey_info_data['job_number'] = job
         tie_on_info_data['job_number'] = job
-        job_info_data['job_number'] = job
+        
 
         WellInfo.objects.create(**well_info_data)
         SurveyInfo.objects.create(**survey_info_data)
         TieOnInformation.objects.create(**tie_on_info_data)
+        
 
         return job
     
