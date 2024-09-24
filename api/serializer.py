@@ -68,7 +68,7 @@ class JobInfoSerializer(serializers.ModelSerializer):
     job_number = CreateJobSerializer(read_only = True)
     class Meta:
         model=JobInfo
-        fields=['client_rep','well_id','well_name','estimated_date','job_number']
+        fields=['client_rep','well_id','well_name','job_number']
 
 class JodDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -118,27 +118,28 @@ class WellInfoSerializer(serializers.ModelSerializer):
 
 
 class JobCreationSerializer(serializers.Serializer):
-    job = CreateJobSerializer()  # Nested CreateJob serializer
-    well_info = WellInfoSerializer()  # Nested WellInfo serializer
-    survey_info = SurveyInfoSerializer()  # Nested SurveyInfo serializer
-    tie_on_info = TieOnInformationSerializer()  # Nested TieOnInformation serializer
+    job = CreateJobSerializer() 
+    well_info = WellInfoSerializer()  
+    survey_info = SurveyInfoSerializer()  
+    tie_on_info = TieOnInformationSerializer() 
+    job_info = JobInfoSerializer() 
 
     def create(self, validated_data):
-        # Extract the nested data
+      
         job_data = validated_data.pop('job')
         well_info_data = validated_data.pop('well_info')
         survey_info_data = validated_data.pop('survey_info')
         tie_on_info_data = validated_data.pop('tie_on_info')
+        job_info_data = validated_data.pop('job_info')
+
 
         # Create the Job object
         job = CreateJob.objects.create(**job_data)
-
-        # Add the job reference to other objects before saving
         well_info_data['job_number'] = job
         survey_info_data['job_number'] = job
         tie_on_info_data['job_number'] = job
+        job_info_data['job_number'] = job
 
-        # Create the related objects
         WellInfo.objects.create(**well_info_data)
         SurveyInfo.objects.create(**survey_info_data)
         TieOnInformation.objects.create(**tie_on_info_data)
