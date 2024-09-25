@@ -90,13 +90,16 @@ class JobDetailsView(APIView):
                 well_info = WellInfo.objects.filter(job_number=job).first()
                 survey_info = SurveyInfo.objects.filter(job_number=job).first()
                 tie_on_info = TieOnInformation.objects.filter(job_number=job).first()
-                job_serializer = JobInfoSerializer(job)
+                job_info = JobInfo.objects.filter(job_number=job).first()
+                job_serializer = CreateJobSerializer(job)
                 customer_serializer = CustomerSerializer(customer) if customer else None
                 well_info_serializer = WellInfoSerializer(well_info) if well_info else None
                 survey_info_serializer = SurveyInfoSerializer(survey_info) if survey_info else None
                 tie_on_info_serializer = TieOnInformationSerializer(tie_on_info) if tie_on_info else None
+                job_info_serializer = JobInfoSerializer(job_info) if job_info else None
                 response_data = {
-                    "job_info": job_serializer.data,
+                   
+                    "job_info": job_info_serializer.data if job_info_serializer else None,
                     "customer_details": customer_serializer.data if customer_serializer else None,
                     "well_info": well_info_serializer.data if well_info_serializer else None,
                     "survey_info": survey_info_serializer.data if survey_info_serializer else None,
@@ -109,8 +112,6 @@ class JobDetailsView(APIView):
                 return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-
 class UploadExcelView(APIView):
     def get(self, request, job_number=None):
         if job_number:
