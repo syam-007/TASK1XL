@@ -313,10 +313,25 @@ class UploadExcelView(APIView):
 
 
 class SurveyCalculationView(APIView):
-    def get(self,request):
-        queryset = SurveyCalculationHeader.objects.all()
-        serializer = SurveyCalculationSerializer(queryset,many=True)
-        return Response(serializer.data)
+    def get(self, request, job_number=None):
+        if job_number:
+            try:
+                # Get the SurveyCalculationHeader for the given job_number
+                header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number)  # Assuming foreign key to CreateJob via job_number
+                
+                # Get all SurveyCalculationDetail records that match the header id
+                survey_details = SurveyCalculationHeader.objects.filter(header_id=header.id)
+                
+                # Serialize the SurveyCalculationDetail records
+                serializer = SurveyCalculationDetailSerializer(survey_details, many=True)
+                
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            except SurveyCalculationHeader.DoesNotExist:
+                return Response({"error": f"No survey calculation header found for job_number {job_number}"}, status=status.HTTP_404_NOT_FOUND)
+
+        # If no job_number is provided, return an error message
+        return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request, *args, **kwargs):
         job_number = request.data.get('job_number')
@@ -368,26 +383,23 @@ class SurveyCalculationView(APIView):
             return Response({"error": f"Error creating SurveyCalculationHeader: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class SurveyCalculationDetailsView(APIView):
-    def get(self,request,job_number=None):
+    def get(self, request, job_number=None):
         if job_number:
             try:
-                job = CreateJob.objects.get(job_number=job_number)
-                queryset = SurveyCalculationDetails.objects.filter(job_number=job)
+              
+                header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number) 
+                survey_details = SurveyCalculationDetails.objects.filter(header_id=header.id)  
+                serializer = SurveyCalculationDetailSerializer(survey_details, many=True)
+                
+                return Response(serializer.data, status=status.HTTP_200_OK)
 
-                if not queryset.exists():
-                  return Response({"error": f"No data found for job_number {job_number}"}, status=status.HTTP_404_NOT_FOUND)
-                serializer = SurveyCalculationDetailSerializer(queryset, many=True)
-                return Response({
-                    "results": serializer.data,
-                }, status=status.HTTP_200_OK)
+            except SurveyCalculationHeader.DoesNotExist:
+                return Response({"error": f"No survey calculation header found for job_number {job_number}"}, status=status.HTTP_404_NOT_FOUND)
+            except SurveyCalculationDetails.DoesNotExist:
+                return Response({"error": f"No survey calculation details found for header ID {header.id}"}, status=status.HTTP_404_NOT_FOUND)
 
-            except CreateJob.DoesNotExist:
-                return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        else:
-            queryset =  SurveyCalculationDetails.objects.all()
-            serializer =  SurveyCalculationDetailSerializer(queryset, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        # If no job_number is provided, return an error message
+        return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request, *args, **kwargs):
         job_number = request.data.get('job_number')

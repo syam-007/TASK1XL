@@ -23,6 +23,7 @@ urlpatterns = [
     path('surveycalculation/',views.SurveyCalculationView.as_view()),
     path('surveycalculation/<str:job_number>/',views.SurveyCalculationView.as_view()),
     path("surveycalculationdetails/",views.SurveyCalculationDetailsView.as_view()),
+     path("surveycalculationdetails/<str:job_number>/",views.SurveyCalculationDetailsView.as_view()),
     path("create-job-detail/",views.CombinedJobCreationView.as_view())
     
 ]
