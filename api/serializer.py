@@ -61,7 +61,7 @@ class CreateJobSerializer(serializers.ModelSerializer):
     
     class Meta:
         model=CreateJob
-        fields = ['job_number','location','assign_to' ,'customer','rig_number','unit_of_measure','estimated_date','service','job_created_date']
+        fields = ['job_number','location','assign_to' ,'customer','rig_number','unit_of_measure','service','job_created_date']
 
 
 class JobInfoSerializer(serializers.ModelSerializer):
@@ -118,7 +118,7 @@ class WellInfoSerializer(serializers.ModelSerializer):
 
 
 class CompleteJobCreationSerializer(serializers.Serializer):
-    
+
     job_info = JobInfoSerializer()
     well_info = WellInfoSerializer()
     survey_info = SurveyInfoSerializer()

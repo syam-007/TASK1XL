@@ -99,10 +99,10 @@ class CreateJob(models.Model):
 class JobInfo(models.Model):
     job_number = models.ForeignKey(CreateJob, on_delete=models.PROTECT, db_column='job_number')
     client_rep = models.CharField(max_length=255)
-    arrival_date = models.DateField(auto_now_add=True)
+    arrival_date = models.DateField()
     well_id = models.IntegerField()
     well_name = models.CharField(max_length=255)
-    estimated_date = models.DateTimeField()
+   
 
     class Meta:
         db_table = 'task_job_info'
