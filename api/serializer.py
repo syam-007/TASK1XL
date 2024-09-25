@@ -55,7 +55,7 @@ class SurveyTypeSerializer(serializers.ModelSerializer):
         fields=['id','survey_types']
 
 
-#-------------------JOB CREATION STARTS --------------
+#-------------------JOB CREATION STARTS --------------#
 
 class CreateJobSerializer(serializers.ModelSerializer):
     
@@ -65,10 +65,10 @@ class CreateJobSerializer(serializers.ModelSerializer):
 
 
 class JobInfoSerializer(serializers.ModelSerializer):
-    job_number = CreateJobSerializer(read_only = True)
+    # job_number = CreateJobSerializer(read_only = True)
     class Meta:
         model=JobInfo
-        fields=['client_rep','well_id','well_name','job_number']
+        fields="__all__"
 
 class JodDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -117,35 +117,34 @@ class WellInfoSerializer(serializers.ModelSerializer):
         return obj. min_G_t
 
 
-class JobCreationSerializer(serializers.Serializer):
-    job = JobInfoSerializer()
-    well_info = WellInfoSerializer()  
-    survey_info = SurveyInfoSerializer()  
-    tie_on_info = TieOnInformationSerializer() 
+class CompleteJobCreationSerializer(serializers.Serializer):
     
+    job_info = JobInfoSerializer()
+    well_info = WellInfoSerializer()
+    survey_info = SurveyInfoSerializer()
+    tie_on_information = TieOnInformationSerializer()
 
     def create(self, validated_data):
       
-        job_data = validated_data.pop('job')
+        job_info_data = validated_data.pop('job_info')
         well_info_data = validated_data.pop('well_info')
         survey_info_data = validated_data.pop('survey_info')
-        tie_on_info_data = validated_data.pop('tie_on_info')
-       
+        tie_on_info_data = validated_data.pop('tie_on_information')
 
+        job_info = JobInfoSerializer().create(validated_data=job_info_data)
 
-        # Create the Job object
-        job = JobInfo.objects.create(**job_data)
-        well_info_data['job_number'] = job
-        survey_info_data['job_number'] = job
-        tie_on_info_data['job_number'] = job
-        
+     
+        well_info = WellInfo.objects.create(**well_info_data)
+        survey_info = SurveyInfo.objects.create(**survey_info_data)
+        tie_on_information = TieOnInformation.objects.create(**tie_on_info_data)
 
-        WellInfo.objects.create(**well_info_data)
-        SurveyInfo.objects.create(**survey_info_data)
-        TieOnInformation.objects.create(**tie_on_info_data)
-        
-
-        return job
+      
+        return {
+            'job_info': job_info,
+            'well_info': well_info,
+            'survey_info': survey_info,
+            'tie_on_information': tie_on_information
+        }
     
 class SurveyCalculationSerializer(serializers.ModelSerializer):
     class Meta:
