@@ -241,7 +241,7 @@ class SurveyInitialDataHeader(models.Model):
     job_number = models.ForeignKey(CreateJob,on_delete = models.CASCADE,db_column='job_number',unique=True)
     survey_type = models.ForeignKey(SurveyTypes,on_delete = models.CASCADE,db_column='survey_type')
     survey_date = models.DateField(auto_now_add=True)
-    run_number = models.IntegerField()
+    
     class Meta:
         db_table = 'task_survey_initial_data_header'
 
@@ -259,7 +259,7 @@ class SurveyInitialDataDetail(models.Model):
     status = models.CharField(max_length=10) 
     g_t_difference = models.DecimalField(max_digits=10, decimal_places=2)
     w_t_difference = models.DecimalField(max_digits=10, decimal_places=2)
-    run_number = models.IntegerField() 
+  
     class Meta:
         db_table = 'task_survey_initial_data_detail'
 
@@ -278,7 +278,7 @@ class SurveyCalculationHeader(models.Model):
     CL = models.DecimalField(max_digits=4,decimal_places=2,null=True)
     dog_leg = models.DecimalField(max_digits=6,decimal_places=5,null=True)
     ratio_factor = models.DecimalField(max_digits=6,decimal_places=5,null=True)
-    run_number = models.IntegerField()
+   
     class Meta:
         db_table = 'task_survey_calculation_header'
 
@@ -297,6 +297,6 @@ class SurveyCalculationDetails(models.Model):
     CL = models.DecimalField(max_digits=4,decimal_places=2,null=True)
     dog_leg = models.DecimalField(max_digits=6,decimal_places=5,null=True)
     ratio_factor = models.DecimalField(max_digits=6,decimal_places=5,null=True)
-    run_number = models.IntegerField()
+    
     class Meta:
         db_table = 'task_survey_calculation_details'
