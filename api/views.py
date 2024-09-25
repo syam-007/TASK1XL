@@ -14,6 +14,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAdminUser
 import math
 from django.db.models import Sum
+from django.db import models
 
 
 class JobViewSet(ModelViewSet):
@@ -386,21 +387,43 @@ class SurveyCalculationDetailsView(APIView):
     def get(self, request, job_number=None):
         if job_number:
             try:
-              
-                header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number) 
-                survey_details = SurveyCalculationDetails.objects.filter(header_id=header.id)  
+                # Get the SurveyCalculationHeader for the given job_number
+                header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number)
+                
+                # Get all SurveyCalculationDetails records that match the header id (header_id)
+                survey_details = SurveyCalculationDetails.objects.filter(header_id=header.id)
+                
+                if not survey_details.exists():
+                    return Response({"error": f"No survey calculation details found for header ID {header.id}"}, status=status.HTTP_404_NOT_FOUND)
+                
+                # Serialize the SurveyCalculationDetail records
                 serializer = SurveyCalculationDetailSerializer(survey_details, many=True)
                 
-                return Response(serializer.data, status=status.HTTP_200_OK)
+                # Calculate the max inclination
+                max_inclination = survey_details.aggregate(max_inclination=models.Max('inclination'))['max_inclination']
+                
+              
+                last_row = survey_details.order_by('-id').first()
+                last_row_details = {
+                    "header_id": header.id,
+                    "closure_distance": last_row.closure_distance,
+                    "closure_direction": last_row.closure_direction,
+                    "vertical_section": last_row.Vertical_Section
+                } if last_row else None
+
+                # Response
+                return Response({
+                    "max_inclination": max_inclination,  
+                    "last_row": last_row_details,
+                    "survey_details": serializer.data,
+                    
+                }, status=status.HTTP_200_OK)
 
             except SurveyCalculationHeader.DoesNotExist:
                 return Response({"error": f"No survey calculation header found for job_number {job_number}"}, status=status.HTTP_404_NOT_FOUND)
-            except SurveyCalculationDetails.DoesNotExist:
-                return Response({"error": f"No survey calculation details found for header ID {header.id}"}, status=status.HTTP_404_NOT_FOUND)
 
         # If no job_number is provided, return an error message
         return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
-
     def post(self, request, *args, **kwargs):
         job_number = request.data.get('job_number')
 
