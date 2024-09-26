@@ -233,6 +233,7 @@ class TieOnInformation(models.Model):
     azimuth = models.DecimalField(max_digits=6,decimal_places=2)
     departure = models.DecimalField(max_digits=6,decimal_places=2)
     job_number = models.ForeignKey(CreateJob,on_delete=models.PROTECT,db_column='job_number')
+    run_number = models.SmallIntegerField()
     class Meta:
         db_table = 'task_survey_tie_on_info'
     
@@ -279,6 +280,7 @@ class SurveyCalculationHeader(models.Model):
     CL = models.DecimalField(max_digits=4,decimal_places=2,null=True)
     dog_leg = models.DecimalField(max_digits=6,decimal_places=5,null=True)
     ratio_factor = models.DecimalField(max_digits=6,decimal_places=5,null=True)
+    run = models.SmallIntegerField()
    
     class Meta:
         db_table = 'task_survey_calculation_header'

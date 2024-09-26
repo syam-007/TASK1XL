@@ -15,6 +15,7 @@ from rest_framework.permissions import IsAdminUser
 import math
 from django.db.models import Sum
 from django.db import models
+from rest_framework import viewsets, status
 
 
 class JobViewSet(ModelViewSet):
@@ -50,6 +51,53 @@ class TieOnInformationView(ModelViewSet):
     serializer_class = TieOnInformationSerializer
     lookup_field = 'job_number'
 
+class TieOnInformationDetailView(APIView):
+
+    def get(self, request, job_number=None, run_number=None):
+        
+        try:
+            queryset = TieOnInformation.objects.filter(job_number__job_number=job_number, run_number=run_number)
+
+            if not queryset.exists():
+                return Response({
+                    "error": f"No TieOnInformation found for job_number {job_number} and run_number {run_number}."
+                }, status=status.HTTP_404_NOT_FOUND)
+            serializer = TieOnInformationSerializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request, *args, **kwargs):
+        job_number = request.data.get('job_number')
+        run_number = request.data.get('run_number')
+        if not job_number:
+            return Response({"error": "job_number is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if run_number is None:
+            return Response({"error": "run_number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            if TieOnInformation.objects.filter(job_number__job_number=job_number, run_number=run_number).exists():
+                return Response({
+                    "error": f"TieOnInformation for job_number {job_number} and run_number {run_number} already exists."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            survey_info = SurveyInfo.objects.filter(job_number__job_number=job_number, run_number=run_number).first()
+
+            if not survey_info:
+                return Response({
+                    "error": f"No matching survey info found for job_number {job_number} and run_number {run_number}."
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            serializer = TieOnInformationSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    
 
 class MasterDataView(APIView):
     def get(self,request):
@@ -89,22 +137,29 @@ class JobDetailsView(APIView):
                 job = CreateJob.objects.get(job_number=job_number)
                 customer = CustomerMaster.objects.filter(createjob__job_number=job_number).first()
                 well_info = WellInfo.objects.filter(job_number=job).first()
-                survey_info = SurveyInfo.objects.filter(job_number=job).first()
-                tie_on_info = TieOnInformation.objects.filter(job_number=job).first()
+                
+              
+                survey_info_list = SurveyInfo.objects.filter(job_number=job)
+                tie_on_info_list = TieOnInformation.objects.filter(job_number=job)
                 job_info = JobInfo.objects.filter(job_number=job).first()
+
+              
                 job_serializer = CreateJobSerializer(job)
                 customer_serializer = CustomerSerializer(customer) if customer else None
                 well_info_serializer = WellInfoSerializer(well_info) if well_info else None
-                survey_info_serializer = SurveyInfoSerializer(survey_info) if survey_info else None
-                tie_on_info_serializer = TieOnInformationSerializer(tie_on_info) if tie_on_info else None
+                
+               
+                survey_info_serializer = SurveyInfoSerializer(survey_info_list, many=True).data
+                tie_on_info_serializer = TieOnInformationSerializer(tie_on_info_list, many=True).data
+                
                 job_info_serializer = JobInfoSerializer(job_info) if job_info else None
+
                 response_data = {
-                   
                     "job_info": job_info_serializer.data if job_info_serializer else None,
                     "customer_details": customer_serializer.data if customer_serializer else None,
                     "well_info": well_info_serializer.data if well_info_serializer else None,
-                    "survey_info": survey_info_serializer.data if survey_info_serializer else None,
-                    "tie_on_information": tie_on_info_serializer.data if tie_on_info_serializer else None,
+                    "survey_info": survey_info_serializer, 
+                    "tie_on_information": tie_on_info_serializer,
                 }
 
                 return Response(response_data, status=status.HTTP_200_OK)
@@ -178,18 +233,18 @@ class UploadExcelView(APIView):
             return Response({"error": "Missing job_number or survey_type"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Check if SurveyInfo exists for the provided job_number and run_number
+          
             if not SurveyInfo.objects.filter(job_number__job_number=job_number, run_number=run_number).exists():
                 return Response({"error": f"No SurveyInfo found for job_number {job_number} with run_number {run_number}"}, status=status.HTTP_404_NOT_FOUND)
 
             job = CreateJob.objects.get(job_number=job_number)
             survey_type_obj = SurveyTypes.objects.get(id=survey_type_id)
             
-            # Check if the SurveyInitialDataHeader already exists for this job_number and run_number
+           
             if SurveyInitialDataHeader.objects.filter(job_number=job, run_number=run_number).exists():
                 return Response({"error": f"SurveyInitialDataHeader already exists for job_number {job_number} and run_number {run_number}"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Create the SurveyInitialDataHeader
+           
             survey_header = SurveyInitialDataHeader.objects.create(
                 job_number=job,
                 survey_type=survey_type_obj,
@@ -306,41 +361,32 @@ class UploadExcelView(APIView):
     def delete(self, request, job_number=None, data_id=None, run_number=None):
      if job_number and data_id and run_number is not None:
         try:
-            # Fetch the job based on job_number
             job = CreateJob.objects.get(job_number=job_number)
-
-            # Fetch the specific SurveyInitialDataHeader based on job and run_number
             survey_info_header = SurveyInitialDataHeader.objects.get(job_number=job, run_number=run_number)
 
-            # Filter for the specific row to delete
             row_to_delete = SurveyInitialDataDetail.objects.filter(
                 id=data_id,
                 job_number=job,
-                header=survey_info_header  # Ensure we link to the specific header
+                header=survey_info_header 
             )
-
-            # Check if the row exists
+            
             if not row_to_delete.exists():
                 return Response({
                     "error": "No data found for the provided job_number, data_id, and run_number."
                 }, status=status.HTTP_404_NOT_FOUND)
 
-            # Delete the row
+          
             deleted_count, _ = row_to_delete.delete()
-
-            # Fetch the remaining queryset based on the job and specific header
             remaining_queryset = SurveyInitialDataDetail.objects.filter(
                 job_number=job,
-                header=survey_info_header  # Ensure we only get entries related to the specific header
+                header=survey_info_header 
             )
 
-            # Check if there are any remaining entries
             if not remaining_queryset.exists():
                 return Response({
                     "message": f"{deleted_count} row(s) deleted successfully. No remaining data for the provided job_number and run_number."
                 }, status=status.HTTP_200_OK)
 
-            # Calculate totals after deletion
             total_g_t_difference_pass = remaining_queryset.filter(status='PASS').aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
             total_w_t_difference_pass = remaining_queryset.filter(status='PASS').aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
             total_g_t_difference = remaining_queryset.aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
@@ -374,55 +420,63 @@ class UploadExcelView(APIView):
         return Response({"error": "Both job_number, run_number, and data_id are required"}, status=status.HTTP_400_BAD_REQUEST)
 
        
-
-
-
 class SurveyCalculationView(APIView):
-    def get(self, request, job_number=None):
-        if job_number:
+    def get(self, request, job_number=None, run_number=None):
+        if job_number and run_number:
             try:
-                # Get the SurveyCalculationHeader for the given job_number
-                header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number)  # Assuming foreign key to CreateJob via job_number
-                
-                # Get all SurveyCalculationDetail records that match the header id
-                survey_details = SurveyCalculationHeader.objects.filter(header_id=header.id)
-                
-                # Serialize the SurveyCalculationDetail records
+                header = SurveyCalculationHeader.objects.get(job_number=job_number,run=run_number) 
+                survey_details = SurveyCalculationDetails.objects.filter(header_id=header.id)
                 serializer = SurveyCalculationDetailSerializer(survey_details, many=True)
-                
+
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
-            except SurveyCalculationHeader.DoesNotExist:
-                return Response({"error": f"No survey calculation header found for job_number {job_number}"}, status=status.HTTP_404_NOT_FOUND)
+            except TieOnInformation.DoesNotExist:
+                return Response({
+                    "error": f"No TieOnInformation found for job_number {job_number} and run_number {run_number}"
+                }, status=status.HTTP_404_NOT_FOUND)
 
-        # If no job_number is provided, return an error message
-        return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+            except SurveyCalculationHeader.DoesNotExist:
+                return Response({
+                    "error": f"No survey calculation header found for job_number {job_number}"
+                }, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({"error": "job_number and run_number parameters are required"}, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request, *args, **kwargs):
         job_number = request.data.get('job_number')
+        run_number = request.data.get('run_number')  
         
         if not job_number:
             return Response({"error": "Missing job_number"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not run_number:  
+            return Response({"error": "Missing run_number"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            tie_on_info = TieOnInformation.objects.get(job_number=job_number)
+          
+            tie_on_info = TieOnInformation.objects.get(job_number__job_number=job_number, run_number=run_number)
         except TieOnInformation.DoesNotExist:
-            return Response({"error": f"TieOnInformation with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                "error": f"TieOnInformation with job_number {job_number} and run_number {run_number} not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
         try:
             survey_calc_header = SurveyCalculationHeader.objects.create(
                 job_number=tie_on_info.job_number,
                 depth=tie_on_info.measured_depth,         
                 inclination=tie_on_info.inclination,    
                 azimuth=tie_on_info.azimuth,             
-                true_vertical_depth = tie_on_info.true_vertical_depth,
-                latitude = tie_on_info.latitude,
-                departure = tie_on_info.departure,
-                DLS =None,
-                Vertical_Section = 0.0,
-                closure_distance= math.sqrt(tie_on_info.latitude ** 2 + tie_on_info.departure ** 2),
-                closure_direction = 0.0,
-                CL = None,
-                dog_leg = None,
-                ratio_factor = None
+                true_vertical_depth=tie_on_info.true_vertical_depth,
+                latitude=tie_on_info.latitude,
+                departure=tie_on_info.departure,
+                DLS=None,
+                Vertical_Section=0.0,
+                closure_distance=math.sqrt(tie_on_info.latitude ** 2 + tie_on_info.departure ** 2),
+                closure_direction=0.0,
+                CL=None,
+                dog_leg=None,
+                ratio_factor=None,
+                run = run_number
             )
 
             return Response({
@@ -433,19 +487,22 @@ class SurveyCalculationView(APIView):
                     "inclination": survey_calc_header.inclination,
                     "azimuth": survey_calc_header.azimuth,
                     "Vertical_Section": survey_calc_header.Vertical_Section,
-                    "true_vertical_depth":survey_calc_header.true_vertical_depth,
+                    "true_vertical_depth": survey_calc_header.true_vertical_depth,
                     "latitude": survey_calc_header.latitude,
-                    "departure ":survey_calc_header.departure,
-                    " DLS":survey_calc_header.DLS,
-                    "closure_distance":survey_calc_header.closure_distance,
-                    "closure_direction":survey_calc_header.closure_direction,
-                    "CL":survey_calc_header.CL,
-                    "dog_leg":survey_calc_header.dog_leg,
-                    "ratio_factor":survey_calc_header.ratio_factor
+                    "departure": survey_calc_header.departure,
+                    "DLS": survey_calc_header.DLS,
+                    "closure_distance": survey_calc_header.closure_distance,
+                    "closure_direction": survey_calc_header.closure_direction,
+                    "CL": survey_calc_header.CL,
+                    "dog_leg": survey_calc_header.dog_leg,
+                    "ratio_factor": survey_calc_header.ratio_factor,
+                    "run": run_number  
                 }
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error": f"Error creating SurveyCalculationHeader: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
     
 class SurveyCalculationDetailsView(APIView):
     def get(self, request, job_number=None):
