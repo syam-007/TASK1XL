@@ -238,9 +238,10 @@ class TieOnInformation(models.Model):
     
 class SurveyInitialDataHeader(models.Model):
     id = models.AutoField(primary_key=True)
-    job_number = models.ForeignKey(CreateJob,on_delete = models.CASCADE,db_column='job_number',unique=True)
+    job_number = models.ForeignKey(CreateJob,on_delete = models.CASCADE,db_column='job_number')
     survey_type = models.ForeignKey(SurveyTypes,on_delete = models.CASCADE,db_column='survey_type')
     survey_date = models.DateField(auto_now_add=True)
+    run_number = models.SmallIntegerField()
     
     class Meta:
         db_table = 'task_survey_initial_data_header'
@@ -264,7 +265,7 @@ class SurveyInitialDataDetail(models.Model):
         db_table = 'task_survey_initial_data_detail'
 
 class SurveyCalculationHeader(models.Model):
-    job_number = models.ForeignKey(CreateJob,on_delete=models.CASCADE,db_column='job_number', unique=True)
+    job_number = models.ForeignKey(CreateJob,on_delete=models.CASCADE,db_column='job_number')
     depth  = models.DecimalField(max_digits=6,decimal_places=2)
     inclination = models.DecimalField(max_digits=3,decimal_places=2)
     azimuth = models.DecimalField(max_digits=6,decimal_places=2)

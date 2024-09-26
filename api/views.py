@@ -114,48 +114,56 @@ class JobDetailsView(APIView):
 
         return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
 class UploadExcelView(APIView):
-    def get(self, request, job_number=None):
-        if job_number:
-            try:
-                job = CreateJob.objects.get(job_number=job_number)
-                queryset = SurveyInitialDataDetail.objects.filter(job_number=job)
+    def get(self, request, job_number=None, run_number=None):
+     if job_number and run_number is not None:
+        try:
+          
+            job = CreateJob.objects.get(job_number=job_number)
+            survey_info_header  = SurveyInitialDataHeader.objects.get(job_number=job, run_number=run_number)
 
-                if not queryset.exists():
-                    return Response({"error": f"No data found for job_number {job_number}"}, status=status.HTTP_404_NOT_FOUND)
+          
+            queryset = SurveyInitialDataDetail.objects.filter(
+                job_number=job,
+                header=survey_info_header 
+            )
+          
+            if not queryset.exists():
+                return Response({"error": f"No data found for job_number {job_number} and run_number {run_number}"}, status=status.HTTP_404_NOT_FOUND)
 
-                # Calculate the scores and percentages
-                total_g_t_difference_pass = queryset.filter(status='PASS').aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
-                total_w_t_difference_pass = queryset.filter(status='PASS').aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
-                total_g_t_difference = queryset.aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
-                total_w_t_difference = queryset.aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
+            total_g_t_difference_pass = queryset.filter(status='PASS').aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
+            total_w_t_difference_pass = queryset.filter(status='PASS').aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
+            total_g_t_difference = queryset.aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
+            total_w_t_difference = queryset.aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
 
-                g_t_score = f"{total_g_t_difference_pass:.2f} / {total_g_t_difference:.2f}"
-                w_t_score = f"{total_w_t_difference_pass:.2f} / {total_w_t_difference:.2f}"
-                g_t_percentage = (total_g_t_difference_pass / total_g_t_difference * 100) if total_g_t_difference else 0
-                w_t_percentage = (total_w_t_difference_pass / total_w_t_difference * 100) if total_w_t_difference else 0
+            g_t_score = f"{total_g_t_difference_pass:.2f} / {total_g_t_difference:.2f}"
+            w_t_score = f"{total_w_t_difference_pass:.2f} / {total_w_t_difference:.2f}"
+            g_t_percentage = (total_g_t_difference_pass / total_g_t_difference * 100) if total_g_t_difference else 0
+            w_t_percentage = (total_w_t_difference_pass / total_w_t_difference * 100) if total_w_t_difference else 0
 
-                serializer = SurveyInitialDataSerializer(queryset, many=True)
-                return Response({
-                    "status": "success",
-                    "success_count": queryset.count(),
-                    "g_t_score": g_t_score,
-                    "w_t_score": w_t_score,
-                    "g_t_percentage": f"{g_t_percentage:.2f}%",
-                    "w_t_percentage": f"{w_t_percentage:.2f}%",
-                    "results": serializer.data,
-                }, status=status.HTTP_200_OK)
-
-            except CreateJob.DoesNotExist:
-                return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        else:
-            queryset = SurveyInitialDataDetail.objects.all()
+          
             serializer = SurveyInitialDataSerializer(queryset, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({
+                "status": "success",
+                "success_count": queryset.count(),
+                "g_t_score": g_t_score,
+                "w_t_score": w_t_score,
+                "g_t_percentage": f"{g_t_percentage:.2f}%",
+                "w_t_percentage": f"{w_t_percentage:.2f}%",
+                "results": serializer.data,
+            }, status=status.HTTP_200_OK)
+
+        except CreateJob.DoesNotExist:
+            return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
+        except SurveyInfo.DoesNotExist:
+            return Response({"error": f"SurveyInfo with job_number {job_number} and run_number {run_number} not found"}, status=status.HTTP_404_NOT_FOUND)
+
+     else:
+        return Response({"error": "job_number and run_number are required"}, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request, *args, **kwargs):
         file = request.FILES.get('file')
-        job_number = request.data.get('job_number')  
+        job_number = kwargs.get('job_number')
+        run_number = kwargs.get('run_number')  
         survey_type_id = request.data.get('survey_type')
         
         if file is None:
@@ -174,7 +182,8 @@ class UploadExcelView(APIView):
             survey_type_obj = SurveyTypes.objects.get(id=survey_type_id)
             survey_header = SurveyInitialDataHeader.objects.create(
                 job_number=job,
-                survey_type=survey_type_obj
+                survey_type=survey_type_obj,
+                run_number=run_number 
             )
         except CreateJob.DoesNotExist:
             return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -192,7 +201,7 @@ class UploadExcelView(APIView):
         success_count = 0
         results = []
 
-        # Initialize sums for "PASS" status
+       
         total_g_t_difference_pass = 0
         total_w_t_difference_pass = 0
         total_g_t_difference = 0
@@ -208,7 +217,7 @@ class UploadExcelView(APIView):
                 g_t_difference = round(well_info.get_G_t - g_t, 2)
                 w_t_difference = round(well_info.get_W_t - w_t, 2)
 
-                # Update totals
+                
                 total_g_t_difference += g_t_difference
                 total_w_t_difference += w_t_difference
 
@@ -230,7 +239,6 @@ class UploadExcelView(APIView):
                 else:
                     w_t_status = "n/c"
 
-                # Determine overall status
                 if g_t_status == "good" and w_t_status == "good":
                     overall_status = "PASS"
                 elif (g_t_status == "good" and w_t_status == "high") or (g_t_status == "high" and w_t_status == "good"):
@@ -244,7 +252,7 @@ class UploadExcelView(APIView):
                 else:
                     overall_status = "REMOVE"
 
-                # Accumulate sums only if status is "PASS"
+              
                 if overall_status == "PASS":
                     total_g_t_difference_pass += g_t_difference
                     total_w_t_difference_pass += w_t_difference
@@ -282,11 +290,9 @@ class UploadExcelView(APIView):
             except Exception as e:
                 errors.append({"row": index + 2, "error": str(e)})
 
-       
         g_t_score = f"{total_g_t_difference_pass:.2f} / {total_g_t_difference:.2f}"
         w_t_score = f"{total_w_t_difference_pass:.2f} / {total_w_t_difference:.2f}"
 
-       
         g_t_percentage = (total_g_t_difference_pass / total_g_t_difference * 100) if total_g_t_difference else 0
         w_t_percentage = (total_w_t_difference_pass / total_w_t_difference * 100) if total_w_t_difference else 0
 
@@ -311,59 +317,92 @@ class UploadExcelView(APIView):
             "w_t_percentage": f"{w_t_percentage:.2f}%",
             "results": results,
         }, status=status.HTTP_201_CREATED)
-    def delete(self, request, job_number=None, data_id=None):
-        if job_number and data_id:
-            try:
-                job = CreateJob.objects.get(job_number=job_number)
-                row_to_delete = SurveyInitialDataDetail.objects.get(id=data_id, job_number=job)
-                row_to_delete.delete()
-                queryset = SurveyInitialDataDetail.objects.filter(job_number=job)
-                if not queryset.exists():
-                    return Response({"error": "No data found for the provided job_number."}, status=status.HTTP_404_NOT_FOUND)
 
-              
-                total_g_t_difference_pass = queryset.filter(status='PASS').aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
-                total_w_t_difference_pass = queryset.filter(status='PASS').aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
-                total_g_t_difference = queryset.aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
-                total_w_t_difference = queryset.aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
+    def delete(self, request, job_number=None, data_id=None, run_number=None):
+     if job_number and data_id and run_number is not None:
+        try:
+            # Fetch the job based on job_number
+            job = CreateJob.objects.get(job_number=job_number)
 
-                g_t_score = f"{total_g_t_difference_pass:.2f} / {total_g_t_difference:.2f}"
-                w_t_score = f"{total_w_t_difference_pass:.2f} / {total_w_t_difference:.2f}"
-                g_t_percentage = (total_g_t_difference_pass / total_g_t_difference * 100) if total_g_t_difference else 0
-                w_t_percentage = (total_w_t_difference_pass / total_w_t_difference * 100) if total_w_t_difference else 0
+            # Fetch the specific SurveyInitialDataHeader based on job and run_number
+            survey_info_header = SurveyInitialDataHeader.objects.get(job_number=job, run_number=run_number)
 
-                serializer = SurveyInitialDataSerializer(queryset, many=True)
+            # Filter for the specific row to delete
+            row_to_delete = SurveyInitialDataDetail.objects.filter(
+                id=data_id,
+                job_number=job,
+                header=survey_info_header  # Ensure we link to the specific header
+            )
 
+            # Check if the row exists
+            if not row_to_delete.exists():
                 return Response({
-                    "status": "success",
-                    "message": f"Row with ID {data_id} deleted successfully.",
-                    "success_count": queryset.count(),
-                    "g_t_score": g_t_score,
-                    "w_t_score": w_t_score,
-                    "g_t_percentage": f"{g_t_percentage:.2f}%",
-                    "w_t_percentage": f"{w_t_percentage:.2f}%",
-                    "results": serializer.data,
+                    "error": "No data found for the provided job_number, data_id, and run_number."
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            # Delete the row
+            deleted_count, _ = row_to_delete.delete()
+
+            # Fetch the remaining queryset based on the job and specific header
+            remaining_queryset = SurveyInitialDataDetail.objects.filter(
+                job_number=job,
+                header=survey_info_header  # Ensure we only get entries related to the specific header
+            )
+
+            # Check if there are any remaining entries
+            if not remaining_queryset.exists():
+                return Response({
+                    "message": f"{deleted_count} row(s) deleted successfully. No remaining data for the provided job_number and run_number."
                 }, status=status.HTTP_200_OK)
 
-            except CreateJob.DoesNotExist:
-                return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
-            except SurveyInitialDataDetail.DoesNotExist:
-                return Response({"error": f"Data with ID {data_id} not found in the job_number {job_number}"}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            return Response({"error": "Both job_number and data_id are required"}, status=status.HTTP_400_BAD_REQUEST)
+            # Calculate totals after deletion
+            total_g_t_difference_pass = remaining_queryset.filter(status='PASS').aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
+            total_w_t_difference_pass = remaining_queryset.filter(status='PASS').aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
+            total_g_t_difference = remaining_queryset.aggregate(Sum('g_t_difference'))['g_t_difference__sum'] or 0
+            total_w_t_difference = remaining_queryset.aggregate(Sum('w_t_difference'))['w_t_difference__sum'] or 0
+
+            g_t_score = f"{total_g_t_difference_pass:.2f} / {total_g_t_difference:.2f}"
+            w_t_score = f"{total_w_t_difference_pass:.2f} / {total_w_t_difference:.2f}"
+            g_t_percentage = (total_g_t_difference_pass / total_g_t_difference * 100) if total_g_t_difference else 0
+            w_t_percentage = (total_w_t_difference_pass / total_w_t_difference * 100) if total_w_t_difference else 0
+
+            # Serialize the remaining results
+            serializer = SurveyInitialDataSerializer(remaining_queryset, many=True)
+
+            return Response({
+                "status": "success",
+                "message": f"{deleted_count} row(s) deleted successfully.",
+                "success_count": remaining_queryset.count(),
+                "g_t_score": g_t_score,
+                "w_t_score": w_t_score,
+                "g_t_percentage": f"{g_t_percentage:.2f}%",
+                "w_t_percentage": f"{w_t_percentage:.2f}%",
+                "results": serializer.data,
+            }, status=status.HTTP_200_OK)
+
+        except CreateJob.DoesNotExist:
+            return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
+        except SurveyInitialDataHeader.DoesNotExist:
+            return Response({"error": f"SurveyInitialDataHeader with job_number {job_number} and run_number {run_number} not found"}, status=status.HTTP_404_NOT_FOUND)
+
+     else:
+        return Response({"error": "Both job_number, run_number, and data_id are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+       
+
 
 
 class SurveyCalculationView(APIView):
     def get(self, request, job_number=None):
         if job_number:
             try:
-                
+                # Get the SurveyCalculationHeader for the given job_number
                 header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number)  # Assuming foreign key to CreateJob via job_number
                 
-               
+                # Get all SurveyCalculationDetail records that match the header id
                 survey_details = SurveyCalculationHeader.objects.filter(header_id=header.id)
                 
-                
+                # Serialize the SurveyCalculationDetail records
                 serializer = SurveyCalculationDetailSerializer(survey_details, many=True)
                 
                 return Response(serializer.data, status=status.HTTP_200_OK)
