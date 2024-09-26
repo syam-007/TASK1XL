@@ -178,8 +178,18 @@ class UploadExcelView(APIView):
             return Response({"error": "Missing job_number or survey_type"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            # Check if SurveyInfo exists for the provided job_number and run_number
+            if not SurveyInfo.objects.filter(job_number__job_number=job_number, run_number=run_number).exists():
+                return Response({"error": f"No SurveyInfo found for job_number {job_number} with run_number {run_number}"}, status=status.HTTP_404_NOT_FOUND)
+
             job = CreateJob.objects.get(job_number=job_number)
             survey_type_obj = SurveyTypes.objects.get(id=survey_type_id)
+            
+            # Check if the SurveyInitialDataHeader already exists for this job_number and run_number
+            if SurveyInitialDataHeader.objects.filter(job_number=job, run_number=run_number).exists():
+                return Response({"error": f"SurveyInitialDataHeader already exists for job_number {job_number} and run_number {run_number}"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Create the SurveyInitialDataHeader
             survey_header = SurveyInitialDataHeader.objects.create(
                 job_number=job,
                 survey_type=survey_type_obj,
@@ -201,7 +211,6 @@ class UploadExcelView(APIView):
         success_count = 0
         results = []
 
-       
         total_g_t_difference_pass = 0
         total_w_t_difference_pass = 0
         total_g_t_difference = 0
@@ -217,42 +226,16 @@ class UploadExcelView(APIView):
                 g_t_difference = round(well_info.get_G_t - g_t, 2)
                 w_t_difference = round(well_info.get_W_t - w_t, 2)
 
-                
                 total_g_t_difference += g_t_difference
                 total_w_t_difference += w_t_difference
 
-                if -1 <= g_t_difference <= 1:
-                    g_t_status = "high"
-                elif -3 <= g_t_difference <= 3:
-                    g_t_status = "good"
-                elif -10 <= g_t_difference <= 10:
-                    g_t_status = "low"
-                else:
-                    g_t_status = "n/c"
+                # Status calculations
+                g_t_status = "high" if -1 <= g_t_difference <= 1 else "good" if -3 <= g_t_difference <= 3 else "low" if -10 <= g_t_difference <= 10 else "n/c"
+                w_t_status = "high" if -1 <= w_t_difference <= 1 else "good" if -5 <= w_t_difference <= 5 else "low" if -10 <= w_t_difference <= 10 else "n/c"
 
-                if -1 <= w_t_difference <= 1:
-                    w_t_status = "high"
-                elif -5 <= w_t_difference <= 5:
-                    w_t_status = "good"
-                elif -10 <= w_t_difference <= 10:
-                    w_t_status = "low"
-                else:
-                    w_t_status = "n/c"
+                # Overall status determination
+                overall_status = "PASS" if (g_t_status == "good" and w_t_status == "good") else "REMOVE"
 
-                if g_t_status == "good" and w_t_status == "good":
-                    overall_status = "PASS"
-                elif (g_t_status == "good" and w_t_status == "high") or (g_t_status == "high" and w_t_status == "good"):
-                    overall_status = "PASS"
-                elif (g_t_status == "low" and w_t_status == "high") or (g_t_status == "high" and w_t_status == "low"):
-                    overall_status = "PASS"
-                elif (g_t_status == "low" and w_t_status == "low") or (g_t_status == "good" and w_t_status == "low"):
-                    overall_status = "PASS"
-                elif g_t_status == "high" and w_t_status == "high":
-                    overall_status = "PASS"
-                else:
-                    overall_status = "REMOVE"
-
-              
                 if overall_status == "PASS":
                     total_g_t_difference_pass += g_t_difference
                     total_w_t_difference_pass += w_t_difference
@@ -290,6 +273,7 @@ class UploadExcelView(APIView):
             except Exception as e:
                 errors.append({"row": index + 2, "error": str(e)})
 
+        # Score calculations
         g_t_score = f"{total_g_t_difference_pass:.2f} / {total_g_t_difference:.2f}"
         w_t_score = f"{total_w_t_difference_pass:.2f} / {total_w_t_difference:.2f}"
 
@@ -317,6 +301,7 @@ class UploadExcelView(APIView):
             "w_t_percentage": f"{w_t_percentage:.2f}%",
             "results": results,
         }, status=status.HTTP_201_CREATED)
+
 
     def delete(self, request, job_number=None, data_id=None, run_number=None):
      if job_number and data_id and run_number is not None:
