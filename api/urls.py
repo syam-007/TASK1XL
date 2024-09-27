@@ -34,7 +34,7 @@ urlpatterns = [
 
     path("surveycalculationdetails/",views.SurveyCalculationDetailsView.as_view()),
 
-    path("surveycalculationdetails/<str:job_number>/",views.SurveyCalculationDetailsView.as_view()),
+    path("surveycalculationdetails/<str:job_number>/<int:run_number>/",views.SurveyCalculationDetailsView.as_view()),
 
     path("create-job-detail/",views.CombinedJobCreationView.as_view()),
 

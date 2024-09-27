@@ -424,10 +424,12 @@ class SurveyCalculationView(APIView):
     def get(self, request, job_number=None, run_number=None):
         if job_number and run_number:
             try:
-                header = SurveyCalculationHeader.objects.get(job_number=job_number,run=run_number) 
-                survey_details = SurveyCalculationDetails.objects.filter(header_id=header.id)
-                serializer = SurveyCalculationDetailSerializer(survey_details, many=True)
-
+            
+                tie_on_info = TieOnInformation.objects.get(job_number__job_number=job_number, run_number=run_number)
+                header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number, run=run_number)
+                
+                serializer = SurveyCalculationSerializer(header)
+                
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
             except TieOnInformation.DoesNotExist:
@@ -437,7 +439,7 @@ class SurveyCalculationView(APIView):
 
             except SurveyCalculationHeader.DoesNotExist:
                 return Response({
-                    "error": f"No survey calculation header found for job_number {job_number}"
+                    "error": f"No survey calculation header found for job_number {job_number} and run_number {run_number}"
                 }, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"error": "job_number and run_number parameters are required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -505,25 +507,25 @@ class SurveyCalculationView(APIView):
 
     
 class SurveyCalculationDetailsView(APIView):
-    def get(self, request, job_number=None):
-        if job_number:
+    def get(self, request, job_number=None, run_number=None):
+        if job_number and run_number:
             try:
-                # Get the SurveyCalculationHeader for the given job_number
-                header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number)
-                
+                # Get the SurveyCalculationHeader for the given job_number and run_number
+                header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number, run=run_number)
+
                 # Get all SurveyCalculationDetails records that match the header id (header_id)
                 survey_details = SurveyCalculationDetails.objects.filter(header_id=header.id)
-                
+
                 if not survey_details.exists():
                     return Response({"error": f"No survey calculation details found for header ID {header.id}"}, status=status.HTTP_404_NOT_FOUND)
-                
+
                 # Serialize the SurveyCalculationDetail records
                 serializer = SurveyCalculationDetailSerializer(survey_details, many=True)
-                
+
                 # Calculate the max inclination
                 max_inclination = survey_details.aggregate(max_inclination=models.Max('inclination'))['max_inclination']
-                
-              
+
+                # Get the last row of the SurveyCalculationDetails table
                 last_row = survey_details.order_by('-id').first()
                 last_row_details = {
                     "header_id": header.id,
@@ -534,17 +536,15 @@ class SurveyCalculationDetailsView(APIView):
 
                 # Response
                 return Response({
-                    "max_inclination": max_inclination,  
+                    "max_inclination": max_inclination,
                     "last_row": last_row_details,
                     "survey_details": serializer.data,
-                    
                 }, status=status.HTTP_200_OK)
 
             except SurveyCalculationHeader.DoesNotExist:
-                return Response({"error": f"No survey calculation header found for job_number {job_number}"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": f"No survey calculation header found for job_number {job_number} and run_number {run_number}"}, status=status.HTTP_404_NOT_FOUND)
 
-        # If no job_number is provided, return an error message
-        return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "job_number and run_number parameters are required"}, status=status.HTTP_400_BAD_REQUEST)
     def post(self, request, *args, **kwargs):
         job_number = request.data.get('job_number')
 
