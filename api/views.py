@@ -424,12 +424,11 @@ class SurveyCalculationView(APIView):
     def get(self, request, job_number=None, run_number=None):
         if job_number and run_number:
             try:
-            
                 tie_on_info = TieOnInformation.objects.get(job_number__job_number=job_number, run_number=run_number)
-                header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number, run=run_number)
-                
-                serializer = SurveyCalculationSerializer(header)
-                
+                header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number,run = run_number) 
+                survey_details = SurveyCalculationDetails.objects.filter(header_id=header.id)
+                serializer = SurveyCalculationDetailSerializer(survey_details, many=True)
+
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
             except TieOnInformation.DoesNotExist:
@@ -439,7 +438,7 @@ class SurveyCalculationView(APIView):
 
             except SurveyCalculationHeader.DoesNotExist:
                 return Response({
-                    "error": f"No survey calculation header found for job_number {job_number} and run_number {run_number}"
+                    "error": f"No survey calculation header found for job_number {job_number}"
                 }, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"error": "job_number and run_number parameters are required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -545,8 +544,13 @@ class SurveyCalculationDetailsView(APIView):
                 return Response({"error": f"No survey calculation header found for job_number {job_number} and run_number {run_number}"}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"error": "job_number and run_number parameters are required"}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+    
     def post(self, request, *args, **kwargs):
         job_number = request.data.get('job_number')
+        run_number = request.data.get('run_number')
 
         if not job_number:
             return Response({"error": "Job number not provided"}, status=status.HTTP_400_BAD_REQUEST)
@@ -557,14 +561,14 @@ class SurveyCalculationDetailsView(APIView):
             return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            survey_headers = SurveyCalculationHeader.objects.filter(job_number=job)
+            survey_headers = SurveyCalculationHeader.objects.filter(job_number=job,run = run_number)
             if not survey_headers.exists():
                 return Response({"error": "Survey Calculation Header not found for this job"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         try:
-            survey_info = SurveyInfo.objects.get(job_number=job)
+            survey_info = SurveyInfo.objects.get(job_number=job,run_number = run_number)
             proposal_direction = survey_info.proposal_direction 
         except SurveyInfo.DoesNotExist:
             proposal_direction = None  
@@ -628,8 +632,11 @@ class SurveyCalculationDetailsView(APIView):
                     current_measured_depth = initial_data.depth
                     if SurveyCalculationDetails.objects.filter(header_id=survey_header, measured_depth=current_measured_depth).exists():
                         continue
+                    else:
+                        print("none")
 
                     CL = current_measured_depth - previous_measured_depth
+                    print(f"{CL}")
                     current_inclination = float(initial_data.Inc)
                     current_azimuth = float(initial_data.AzG)
 
