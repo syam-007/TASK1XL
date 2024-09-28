@@ -236,6 +236,14 @@ class TieOnInformation(models.Model):
     run_number = models.SmallIntegerField()
     class Meta:
         db_table = 'task_survey_tie_on_info'
+
+
+
+class SequenceOfEventsMaster(models.Model):
+    task_description = models.CharField(max_length=255)
+    
+
+
     
 class SurveyInitialDataHeader(models.Model):
     id = models.AutoField(primary_key=True)

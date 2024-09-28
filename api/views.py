@@ -554,6 +554,17 @@ class SurveyCalculationDetailsView(APIView):
 
         if not job_number:
             return Response({"error": "Job number not provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+           existing_calculation = SurveyCalculationDetails.objects.filter(header_id__job_number=job_number, header_id__run=run_number)
+           if existing_calculation.exists():
+            return Response({
+                "status": "failed",
+                "error": f"Survey calculation details already exist for job_number {job_number} and run_number {run_number}"}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+         return Response({"error": f"Error checking existing survey calculation details: {str(e)}"}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         try:
             job = CreateJob.objects.get(job_number=job_number)
@@ -632,8 +643,7 @@ class SurveyCalculationDetailsView(APIView):
                     current_measured_depth = initial_data.depth
                     if SurveyCalculationDetails.objects.filter(header_id=survey_header, measured_depth=current_measured_depth).exists():
                         continue
-                    else:
-                        print("none")
+            
 
                     CL = current_measured_depth - previous_measured_depth
                     print(f"{CL}")
