@@ -3,7 +3,7 @@ from .models import (JobInfo,CustomerMaster,UnitofMeasureMaster,
                      ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,
                      SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail,WellInfo,SurveyCalculationHeader,SurveyCalculationDetails,SurveyInfo, 
                      TieOnInformation,AssetMasterDetails,AssetMasterHeader, GyrodataMaster,VehiclesDataMaster,
-                     JobAssetMaster
+                     JobAssetMaster,SequenceOfEventsMaster,SoeMaster
                      )
 
 
@@ -56,6 +56,18 @@ class SurveyTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model= SurveyTypes
         fields=['id','survey_types']
+
+class SoeMasterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SoeMaster
+        fields = "__all_"
+
+
+class SequenceOfEventsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SequenceOfEventsMaster
+        fields = '__all__'
+
 
 
 #-------------------JOB CREATION STARTS --------------#

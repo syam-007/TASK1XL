@@ -47,7 +47,11 @@ urlpatterns = [
     path('tieOnInformationdetail/<str:job_number>/<int:run_number>/',views.TieOnInformationDetailView.as_view()),
 
     path('asset-info/<str:header>/',views.GetAssetDetailsView.as_view()),
+
     path('get-jobassets/<str:job_number>/',views.UpdateAsset.as_view()),
+    
+    path('soe/<str:job_number>/',views.SoeViewSet.as_view())
+    
    
     
     

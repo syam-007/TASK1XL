@@ -243,9 +243,18 @@ class TieOnInformation(models.Model):
 
 class SequenceOfEventsMaster(models.Model):
     soe_desc = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now=True)
+    job_number = models.ForeignKey(CreateJob,on_delete=models.CASCADE,db_column="job_number")
 
     class Meta:
+        db_table = 'task_soe_Details'
+class SoeMaster(models.Model):
+
+    action = models.CharField(max_length=255)
+    class Meta:
         db_table = 'task_soe_master'
+
+
 
 class AssetMasterHeader(models.Model):
     header = models.CharField(max_length=255)
@@ -291,7 +300,7 @@ class VehiclesDataMaster(models.Model):
 
 
 class JobAssetMaster(models.Model):
-    job_number = models.ForeignKey(CreateJob,models.PROTECT,db_column="job_number")
+    job_number = models.ForeignKey(CreateJob,models.PROTECT,db_column="job_number",null=True)
     cost_center = models.ForeignKey(AssetMasterHeader,on_delete=models.PROTECT,db_column="cost_center")
     gyro_data = models.ForeignKey(GyrodataMaster,models.PROTECT,db_column="gyro_data")
     vehicle = models.ForeignKey(VehiclesDataMaster,on_delete=models.PROTECT,db_column="vehicle")

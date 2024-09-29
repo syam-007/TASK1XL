@@ -8,9 +8,10 @@ from  .serializer import ( CustomerSerializer,UnitOfMeasureSeializer,JobInfoSeri
                           SurveyTypeSerializer,CreateJobSerializer,WellInfoSerializer,EmployeeSerializer,SurveyInitialDataSerializer,
                           SurveyCalculationSerializer,SurveyCalculationDetailSerializer,
                           SurveyInfoSerializer,TieOnInformationSerializer,
-                          CompleteJobCreationSerializer,AssetInfoSerializer,AssetHeaderSerializer,GyroDataSerializer,VehicleSerilaizer,JobAssetSerializer)
+                          CompleteJobCreationSerializer,AssetInfoSerializer,AssetHeaderSerializer,GyroDataSerializer,VehicleSerilaizer,JobAssetSerializer,SequenceOfEventsSerializer
+                          ,SoeMasterSerializer)
 from rest_framework.viewsets import ModelViewSet
-from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,SurveyInfo,TieOnInformation,AssetMasterDetails,AssetMasterHeader,GyrodataMaster,VehiclesDataMaster,JobAssetMaster
+from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,SurveyInfo,TieOnInformation,AssetMasterDetails,AssetMasterHeader,GyrodataMaster,VehiclesDataMaster,JobAssetMaster,SequenceOfEventsMaster,SoeMaster
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 import pandas as pd
@@ -952,3 +953,91 @@ class SurveyCalculationDetailsView(APIView):
             "last_rows": last_row_details, 
             "results": results
         }, status=status.HTTP_201_CREATED)
+    
+
+
+class SoeViewSet(APIView):
+     def get(self, request, job_number=None):
+        if job_number is not None:
+            try:
+                job = CreateJob.objects.get(job_number=job_number)
+                events = SequenceOfEventsMaster.objects.filter(job_number=job)
+                if not events.exists():
+                    return Response({
+                        "message": f"No events found for job_number {job_number}."
+                    }, status=status.HTTP_404_NOT_FOUND)
+                serializer = SequenceOfEventsSerializer(events, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            except CreateJob.DoesNotExist:
+                return Response({
+                    "error": f"No job found with job_number {job_number}."
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            "error": "job_number must be provided."
+        }, status=status.HTTP_400_BAD_REQUEST)
+     
+
+class SoeViewSet(APIView):
+    def get(self, request, job_number=None):
+        if job_number is not None:
+            try:
+                job = CreateJob.objects.get(job_number=job_number)
+                events = SequenceOfEventsMaster.objects.filter(job_number=job)
+                if not events.exists():
+                    return Response({
+                        "message": f"No events found for job_number {job_number}."
+                    }, status=status.HTTP_404_NOT_FOUND)
+                serializer = SequenceOfEventsSerializer(events, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            except CreateJob.DoesNotExist:
+                return Response({
+                    "error": f"No job found with job_number {job_number}."
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            "error": "job_number must be provided."
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request,job_number=None):
+        job_number = request.data.get('job_number')  
+        action_id = request.data.get('action_id')
+        if job_number is None or action_id is None:
+            return Response({
+                "error": "job_number and action_id must be provided."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            
+            job = CreateJob.objects.get(job_number=job_number)
+            action = SoeMaster.objects.get(id=action_id)
+          
+            sequence_of_event = SequenceOfEventsMaster.objects.create(
+                job_number=job,
+                soe_desc=action.action 
+            )
+
+           
+            serializer = SequenceOfEventsSerializer(sequence_of_event)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except CreateJob.DoesNotExist:
+            return Response({
+                "error": f"No job found with job_number {job_number}."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except SoeMaster.DoesNotExist:
+            return Response({
+                "error": f"No action found with action_id {action_id}."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
