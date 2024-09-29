@@ -208,9 +208,9 @@ class JobDetailsView(APIView):
         return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# class Asset(ModelViewSet):
-#     queryset = JobAssetMaster.objects.all()
-#     serializer_class = JobAssetSerializer
+class Asset(ModelViewSet):
+    queryset = JobAssetMaster.objects.all()
+    serializer_class = JobAssetSerializer
 
 class UpdateAsset(APIView):
     def get(self, request, job_number=None):
