@@ -60,7 +60,7 @@ class SurveyTypeSerializer(serializers.ModelSerializer):
 class SoeMasterSerializer(serializers.ModelSerializer):
     class Meta:
         model = SoeMaster
-        fields = "__all_"
+        fields = "__all__"
 
 
 class SequenceOfEventsSerializer(serializers.ModelSerializer):
