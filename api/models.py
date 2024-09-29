@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 import math
+from django.conf import settings
 
 
 
@@ -49,6 +50,7 @@ class EmployeeMaster(models.Model):
     emp_name = models.CharField(max_length=255)
     emp_short_name = models.CharField(max_length=255,null=True)
     emp_designation = models.CharField(max_length=255,null=True)
+    # user = models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
 
     def __str__(self) -> str:
         return self.emp_name
@@ -240,8 +242,53 @@ class TieOnInformation(models.Model):
 
 
 class SequenceOfEventsMaster(models.Model):
-    task_description = models.CharField(max_length=255)
+    soe_desc = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = 'task_soe_master'
+
+class AssetMasterHeader(models.Model):
+    header = models.CharField(max_length=255)
+    class Meta:
+        db_table = 'task_asset_master_header'
+
+class AssetMasterDetails(models.Model):
+    asset_code =models.CharField(max_length=255,null=True)
+    asset_group = models.CharField(max_length=255,null=True)
+    asset_main_category = models.CharField(max_length=255,null=True)
+    asset_description = models.CharField(max_length=255)
+    serial_no = models.CharField(max_length=255)
+    status = models.CharField(max_length=255)
+    cost_center = models.ForeignKey(AssetMasterHeader,on_delete=models.PROTECT)
+
+    class Meta:
+        db_table = 'task_asset_master_details'
+
+class GyrodataMaster(models.Model):
+    asset_code =models.CharField(max_length=255,null=True)
+    asset_group = models.CharField(max_length=255,null=True)
+    asset_main_category = models.CharField(max_length=255,null=True)
+    asset_description = models.CharField(max_length=255)
+    serial_no = models.CharField(max_length=255)
+    status = models.CharField(max_length=255)
     
+
+    class Meta:
+        db_table = 'task_gyrodata_master'
+
+class VehiclesDataMaster(models.Model):
+    asset_code =models.CharField(max_length=255,null=True)
+    physical_location = models.CharField(max_length=255,null=True)
+    asset_main_category = models.CharField(max_length=255,null=True)
+    asset_description = models.CharField(max_length=255)
+    serial_no = models.CharField(max_length=255)
+    status = models.CharField(max_length=255)
+   
+
+    class Meta:
+        db_table = 'task_vehicle_master'
+
+
 
 
     
@@ -269,6 +316,7 @@ class SurveyInitialDataDetail(models.Model):
     status = models.CharField(max_length=10) 
     g_t_difference = models.DecimalField(max_digits=10, decimal_places=2)
     w_t_difference = models.DecimalField(max_digits=10, decimal_places=2)
+    run_numbe = models.SmallIntegerField()
   
     class Meta:
         db_table = 'task_survey_initial_data_detail'

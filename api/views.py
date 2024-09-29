@@ -1,9 +1,16 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from  .serializer import CustomerSerializer,UnitOfMeasureSeializer,JobInfoSerializer,JodDetailSerializer,ServiceTypeSerializer,RigMasterSerilalizer,WelltypeSerializer,ToolTypeSerializer,HoleSectionSerializer,SurveyTypeSerializer,CreateJobSerializer,WellInfoSerializer,EmployeeSerializer,SurveyInitialDataSerializer,SurveyCalculationSerializer,SurveyCalculationDetailSerializer,SurveyInfoSerializer,TieOnInformationSerializer, CompleteJobCreationSerializer
+from  .serializer import ( CustomerSerializer,UnitOfMeasureSeializer,JobInfoSerializer,
+                          JodDetailSerializer,ServiceTypeSerializer,
+                          RigMasterSerilalizer,WelltypeSerializer,
+                          ToolTypeSerializer,HoleSectionSerializer,
+                          SurveyTypeSerializer,CreateJobSerializer,WellInfoSerializer,EmployeeSerializer,SurveyInitialDataSerializer,
+                          SurveyCalculationSerializer,SurveyCalculationDetailSerializer,
+                          SurveyInfoSerializer,TieOnInformationSerializer,
+                          CompleteJobCreationSerializer,AssetInfoSerializer,AssetHeaderSerializer,GyroDataSerializer,VehicleSerilaizer)
 from rest_framework.viewsets import ModelViewSet
-from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,SurveyInfo,TieOnInformation
+from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,SurveyInfo,TieOnInformation,AssetMasterDetails,AssetMasterHeader,GyrodataMaster,VehiclesDataMaster
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 import pandas as pd
@@ -16,6 +23,7 @@ import math
 from django.db.models import Sum
 from django.db import models
 from rest_framework import viewsets, status
+from rest_framework.permissions import IsAuthenticated
 
 
 class JobViewSet(ModelViewSet):
@@ -50,6 +58,37 @@ class TieOnInformationView(ModelViewSet):
     queryset = TieOnInformation.objects.all()
     serializer_class = TieOnInformationSerializer
     lookup_field = 'job_number'
+
+class GetAssetHeaderView(ModelViewSet):
+    queryset = AssetMasterHeader.objects.all()
+    serializer_class = AssetHeaderSerializer
+    
+class GetAssetDetailsView(APIView): 
+    def get(self, request, header=None):
+        try:
+            queryset = AssetMasterDetails.objects.filter(cost_center__header=header)
+
+            if not queryset.exists():
+                return Response({
+                    "error": f"No AssetMasterDetails found for header {header}."
+                }, status=status.HTTP_404_NOT_FOUND)
+            serializer = AssetInfoSerializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class GyroDataviewSet(ModelViewSet):
+    queryset = GyrodataMaster.objects.all()
+    serializer_class = GyroDataSerializer
+
+
+class VehicleViewSet(ModelViewSet):
+    queryset = VehiclesDataMaster.objects.all()
+    serializer_class = VehicleSerilaizer
+
+
+
 
 class TieOnInformationDetailView(APIView):
 
@@ -168,6 +207,11 @@ class JobDetailsView(APIView):
                 return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+
+
 class UploadExcelView(APIView):
     def get(self, request, job_number=None, run_number=None):
      if job_number and run_number is not None:

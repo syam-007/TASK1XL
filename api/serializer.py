@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import (JobInfo,CustomerMaster,UnitofMeasureMaster,
                      ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,
-                     SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail,WellInfo,SurveyCalculationHeader,SurveyCalculationDetails,SurveyInfo, TieOnInformation)
+                     SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail,WellInfo,SurveyCalculationHeader,SurveyCalculationDetails,SurveyInfo, 
+                     TieOnInformation,AssetMasterDetails,AssetMasterHeader, GyrodataMaster,VehiclesDataMaster)
 
 
 class ServiceTypeSerializer(serializers.ModelSerializer):
@@ -116,9 +117,27 @@ class WellInfoSerializer(serializers.ModelSerializer):
     def get_min_gt(self,obj):
         return obj. min_G_t
 
+class AssetHeaderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssetMasterHeader
+        fields ='__all__'
+
+class AssetInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssetMasterDetails
+        fields = '__all__'
+
+class GyroDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GyrodataMaster
+        fields = '__all__'
+
+class VehicleSerilaizer(serializers.ModelSerializer):
+    class Meta:
+        model = VehiclesDataMaster
+        fields = '__all__'
 
 class CompleteJobCreationSerializer(serializers.Serializer):
-
     job_info = JobInfoSerializer()
     well_info = WellInfoSerializer()
     survey_info = SurveyInfoSerializer()

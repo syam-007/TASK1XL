@@ -12,6 +12,11 @@ router.register('well-info',views.WellinfoViewSet)
 router.register('employee',views.EmployeeViewSet)
 router.register('surveyinfo',views.SurveyInfoViewset)
 router.register('tieoninfo',views.TieOnInformationView)
+router.register('asset-master',views.GetAssetHeaderView)
+router.register('gyro-data',views.GyroDataviewSet)
+router.register('vehicle-data',views.VehicleViewSet)
+
+
 
 
 urlpatterns = [
@@ -38,7 +43,10 @@ urlpatterns = [
 
     path("create-job-detail/",views.CombinedJobCreationView.as_view()),
 
-    path('tieOnInformationdetail/<str:job_number>/<int:run_number>/',views.TieOnInformationDetailView.as_view())
+    path('tieOnInformationdetail/<str:job_number>/<int:run_number>/',views.TieOnInformationDetailView.as_view()),
+
+    path('asset-info/<str:header>/',views.GetAssetDetailsView.as_view()),
+   
     
     
 ]
