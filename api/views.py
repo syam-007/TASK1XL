@@ -8,9 +8,9 @@ from  .serializer import ( CustomerSerializer,UnitOfMeasureSeializer,JobInfoSeri
                           SurveyTypeSerializer,CreateJobSerializer,WellInfoSerializer,EmployeeSerializer,SurveyInitialDataSerializer,
                           SurveyCalculationSerializer,SurveyCalculationDetailSerializer,
                           SurveyInfoSerializer,TieOnInformationSerializer,
-                          CompleteJobCreationSerializer,AssetInfoSerializer,AssetHeaderSerializer,GyroDataSerializer,VehicleSerilaizer)
+                          CompleteJobCreationSerializer,AssetInfoSerializer,AssetHeaderSerializer,GyroDataSerializer,VehicleSerilaizer,JobAssetSerializer)
 from rest_framework.viewsets import ModelViewSet
-from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,SurveyInfo,TieOnInformation,AssetMasterDetails,AssetMasterHeader,GyrodataMaster,VehiclesDataMaster
+from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,SurveyInfo,TieOnInformation,AssetMasterDetails,AssetMasterHeader,GyrodataMaster,VehiclesDataMaster,JobAssetMaster
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 import pandas as pd
@@ -86,8 +86,6 @@ class GyroDataviewSet(ModelViewSet):
 class VehicleViewSet(ModelViewSet):
     queryset = VehiclesDataMaster.objects.all()
     serializer_class = VehicleSerilaizer
-
-
 
 
 class TieOnInformationDetailView(APIView):
@@ -207,11 +205,120 @@ class JobDetailsView(APIView):
                 return Response({"error": f"Job with job_number {job_number} not found"}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"error": "job_number parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# class Asset(ModelViewSet):
+#     queryset = JobAssetMaster.objects.all()
+#     serializer_class = JobAssetSerializer
+
+class UpdateAsset(APIView):
+    def get(self, request, job_number=None):
+        try:
+            job = CreateJob.objects.get(job_number=job_number)
+            queryset = JobAssetMaster.objects.filter(job_number=job)
+            if not queryset.exists():
+                return Response({
+                    "error": f"No asset details found for job_number {job_number}."
+                }, status=status.HTTP_404_NOT_FOUND)
+            serializer = JobAssetSerializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except CreateJob.DoesNotExist:
+            return Response({
+                "error": f"No job found with job_number {job_number}."
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+    def post(self, request, job_number=None):
+        try:
+            # Check if the job_number exists in CreateJob
+            job = CreateJob.objects.get(job_number=job_number)
 
+            # Check if asset details already exist for the job_number
+            if JobAssetMaster.objects.filter(job_number=job).exists():
+                return Response({
+                    "error": f"Asset details for job_number {job_number} already exist."
+                }, status=status.HTTP_400_BAD_REQUEST)
 
+            # Prepare data from request
+            data = request.data.copy()  # Create a mutable copy
 
+            # Fetch related model instances
+            cost_center = AssetMasterHeader.objects.get(id=data.get('cost_center'))
+            gyro_data = GyrodataMaster.objects.get(id=data.get('gyro_data'))
+            vehicle = VehiclesDataMaster.objects.get(id=data.get('vehicle'))
+            emp_1 = EmployeeMaster.objects.get(id=data.get('emp_1'))
+            emp_2 = EmployeeMaster.objects.get(id=data.get('emp_2'))
+            emp_3 = EmployeeMaster.objects.get(id=data.get('emp_3'))
+            emp_4 = EmployeeMaster.objects.get(id=data.get('emp_4'))
+            emp_5 = EmployeeMaster.objects.get(id=data.get('emp_5')) if data.get('emp_5') else None
+            emp_6 = EmployeeMaster.objects.get(id=data.get('emp_6')) if data.get('emp_6') else None
+            emp_7 = EmployeeMaster.objects.get(id=data.get('emp_7')) if data.get('emp_7') else None
 
+            # Create a new instance of JobAssetMaster
+            job_asset_master = JobAssetMaster(
+                job_number=job,  # Set the job_number to the job object
+                cost_center=cost_center,
+                gyro_data=gyro_data,
+                vehicle=vehicle,
+                emp_1=emp_1,
+                emp_2=emp_2,
+                emp_3=emp_3,
+                emp_4=emp_4,
+                emp_5=emp_5,
+                emp_6=emp_6,
+                emp_7=emp_7
+            )
+
+            # Save the instance to the database
+            job_asset_master.save()
+
+            # Prepare response data
+            response_data = {
+                "id": job_asset_master.id,
+                "job_number": job.job_number,
+                "cost_center": job_asset_master.cost_center.id,
+                "gyro_data": job_asset_master.gyro_data.id,
+                "vehicle": job_asset_master.vehicle.id,
+                "emp_1": job_asset_master.emp_1.id,
+                "emp_2": job_asset_master.emp_2.id,
+                "emp_3": job_asset_master.emp_3.id,
+                "emp_4": job_asset_master.emp_4.id,
+                "emp_5": job_asset_master.emp_5.id if job_asset_master.emp_5 else None,
+                "emp_6": job_asset_master.emp_6.id if job_asset_master.emp_6 else None,
+                "emp_7": job_asset_master.emp_7.id if job_asset_master.emp_7 else None,
+            }
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
+
+        except CreateJob.DoesNotExist:
+            return Response({
+                "error": f"No job found with job_number {job_number}."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except AssetMasterHeader.DoesNotExist:
+            return Response({
+                "error": "Invalid cost_center ID."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except GyrodataMaster.DoesNotExist:
+            return Response({
+                "error": "Invalid gyro_data ID."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except VehiclesDataMaster.DoesNotExist:
+            return Response({
+                "error": "Invalid vehicle ID."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except EmployeeMaster.DoesNotExist as e:
+            return Response({
+                "error": f"Invalid employee ID: {str(e)}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class UploadExcelView(APIView):
     def get(self, request, job_number=None, run_number=None):
      if job_number and run_number is not None:

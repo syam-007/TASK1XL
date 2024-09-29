@@ -2,7 +2,9 @@ from rest_framework import serializers
 from .models import (JobInfo,CustomerMaster,UnitofMeasureMaster,
                      ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,
                      SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail,WellInfo,SurveyCalculationHeader,SurveyCalculationDetails,SurveyInfo, 
-                     TieOnInformation,AssetMasterDetails,AssetMasterHeader, GyrodataMaster,VehiclesDataMaster)
+                     TieOnInformation,AssetMasterDetails,AssetMasterHeader, GyrodataMaster,VehiclesDataMaster,
+                     JobAssetMaster
+                     )
 
 
 class ServiceTypeSerializer(serializers.ModelSerializer):
@@ -79,6 +81,8 @@ class  TieOnInformationSerializer(serializers.ModelSerializer):
     class Meta:
         model = TieOnInformation
         fields = '__all__'
+
+
 class SurveyInitialDataSerializer(serializers.ModelSerializer):
      class Meta:
          model = SurveyInitialDataDetail
@@ -173,3 +177,22 @@ class SurveyCalculationDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = SurveyCalculationDetails
         fields='__all__'
+
+class JobAssetSerializer(serializers.ModelSerializer):
+        job_number = CreateJob()
+        cost_center =AssetHeaderSerializer(read_only = True)
+        gyro_data = GyroDataSerializer(read_only=True)  # Gyrodata details
+        vehicle =VehicleSerilaizer(read_only=True)  # Vehicle details
+        emp_1 = EmployeeSerializer(read_only=True)  # Employee 1 details
+        emp_2 = EmployeeSerializer(read_only=True)  # Employee 2 details
+        emp_3 = EmployeeSerializer(read_only=True)  # Employee 3 details
+        emp_4 = EmployeeSerializer(read_only=True)  # Employee 4 details
+        emp_5 = EmployeeSerializer(read_only=True, allow_null=True)  # Employee 5 details
+        emp_6 = EmployeeSerializer(read_only=True, allow_null=True)  # Employee 6 details
+        emp_7 = EmployeeSerializer(read_only=True, allow_null=True)
+        class Meta:
+            model = JobAssetMaster
+            fields = [
+                'job_number', 'cost_center', 'gyro_data', 'vehicle', 
+                'emp_1', 'emp_2', 'emp_3', 'emp_4', 'emp_5', 'emp_6', 'emp_7'
+            ]

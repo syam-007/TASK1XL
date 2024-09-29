@@ -14,7 +14,8 @@ router.register('surveyinfo',views.SurveyInfoViewset)
 router.register('tieoninfo',views.TieOnInformationView)
 router.register('asset-master',views.GetAssetHeaderView)
 router.register('gyro-data',views.GyroDataviewSet)
-router.register('vehicle-data',views.VehicleViewSet)
+router.register('vehicle-data',views.VehicleViewSet),
+# router.register('asset',views.Asset)
 
 
 
@@ -46,6 +47,7 @@ urlpatterns = [
     path('tieOnInformationdetail/<str:job_number>/<int:run_number>/',views.TieOnInformationDetailView.as_view()),
 
     path('asset-info/<str:header>/',views.GetAssetDetailsView.as_view()),
+    path('get-jobassets/<str:job_number>/',views.UpdateAsset.as_view()),
    
     
     

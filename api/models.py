@@ -290,7 +290,21 @@ class VehiclesDataMaster(models.Model):
 
 
 
-
+class JobAssetMaster(models.Model):
+    job_number = models.ForeignKey(CreateJob,models.PROTECT,db_column="job_number")
+    cost_center = models.ForeignKey(AssetMasterHeader,on_delete=models.PROTECT,db_column="cost_center")
+    gyro_data = models.ForeignKey(GyrodataMaster,models.PROTECT,db_column="gyro_data")
+    vehicle = models.ForeignKey(VehiclesDataMaster,on_delete=models.PROTECT,db_column="vehicle")
+    emp_1 = models.ForeignKey(EmployeeMaster, on_delete=models.PROTECT, related_name='emp_1_jobs',db_column="emp_1")
+    emp_2 = models.ForeignKey(EmployeeMaster, on_delete=models.PROTECT, related_name='emp_2_jobs',db_column="emp_2")
+    emp_3 = models.ForeignKey(EmployeeMaster, on_delete=models.PROTECT, related_name='emp_3_jobs',db_column="emp_3")
+    emp_4 = models.ForeignKey(EmployeeMaster, on_delete=models.PROTECT, related_name='emp_4_jobs',db_column="emp_4")
+    emp_5 = models.ForeignKey(EmployeeMaster, on_delete=models.PROTECT, null=True, related_name='emp_5_jobs',db_column="emp_5")
+    emp_6 = models.ForeignKey(EmployeeMaster, on_delete=models.PROTECT, null=True, related_name='emp_6_jobs',db_column="emp_6")
+    emp_7 = models.ForeignKey(EmployeeMaster, on_delete=models.PROTECT, null=True, related_name='emp_7_jobs',db_column="emp_7")
+    class Meta:
+        db_table = 'task_job_asset_master'
+    
     
 class SurveyInitialDataHeader(models.Model):
     id = models.AutoField(primary_key=True)
