@@ -63,6 +63,10 @@ class TieOnInformationView(ModelViewSet):
 class GetAssetHeaderView(ModelViewSet):
     queryset = AssetMasterHeader.objects.all()
     serializer_class = AssetHeaderSerializer
+
+class GetAssetMaster(ModelViewSet):
+    queryset = SoeMaster.objects.all()
+    serializer_class = SoeMasterSerializer
     
 class GetAssetDetailsView(APIView): 
     def get(self, request, header=None):

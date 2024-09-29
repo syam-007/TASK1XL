@@ -15,7 +15,7 @@ router.register('tieoninfo',views.TieOnInformationView)
 router.register('asset-master',views.GetAssetHeaderView)
 router.register('gyro-data',views.GyroDataviewSet)
 router.register('vehicle-data',views.VehicleViewSet),
-router.register('asset',views.Asset)
+router.register('asset',views.GetAssetMaster)
 
 
 
