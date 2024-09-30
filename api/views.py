@@ -445,7 +445,18 @@ class UploadExcelView(APIView):
                 w_t_status = "high" if -1 <= w_t_difference <= 1 else "good" if -5 <= w_t_difference <= 5 else "low" if -10 <= w_t_difference <= 10 else "n/c"
 
                 # Overall status determination
-                overall_status = "PASS" if (g_t_status == "good" and w_t_status == "good") else "REMOVE"
+                if g_t_status == "good" and w_t_status == "good":
+                  overall_status = "PASS"
+                elif g_t_status == "good" and w_t_status == "low":
+                    overall_status = "PASS"
+                elif g_t_status == "low" and w_t_status == "good":
+                    overall_status = "PASS"
+                elif g_t_status == "low" and w_t_status == "low":
+                    overall_status = "PASS"
+                elif g_t_status == "high" and w_t_status == "high":
+                    overall_status = "PASS"
+                else:
+                    overall_status = "REMOVE"
 
                 if overall_status == "PASS":
                     total_g_t_difference_pass += g_t_difference
