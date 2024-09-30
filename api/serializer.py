@@ -25,7 +25,7 @@ class UnitOfMeasureSeializer(serializers.ModelSerializer):
 class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeMaster
-        fields = ["emp_id","emp_name"] 
+        fields = "__all__"
 
 class RigMasterSerilalizer(serializers.ModelSerializer):
     class Meta:
