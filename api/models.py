@@ -96,7 +96,13 @@ class CreateJob(models.Model):
     job_created_date = models.DateTimeField()
     job_assign_date = models.DateTimeField(auto_now=True)
     class Meta:
-        db_table = 'task_create_job'
+  
+      db_table = 'task_create_job'
+
+
+
+
+
 
 class JobInfo(models.Model):
     job_number = models.ForeignKey(CreateJob, on_delete=models.PROTECT, db_column='job_number')
@@ -147,8 +153,8 @@ class WellInfo(models.Model):
     longitude_1 = models.IntegerField()
     longitude_2 = models.IntegerField()
     longitude_3 = models.DecimalField(max_digits=7,decimal_places=5)
-    northing = models.DecimalField(max_digits=10,decimal_places=4)
-    easting = models.DecimalField(max_digits=10,decimal_places=4)
+    northing = models.DecimalField(max_digits=12,decimal_places=4)
+    easting = models.DecimalField(max_digits=12,decimal_places=4)
     well_type = models.ForeignKey(WelltypeMaster,on_delete=models.PROTECT)
     expected_well_temp = models.IntegerField()
     expected_wellbore_inclination= models.IntegerField()
