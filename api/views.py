@@ -463,7 +463,8 @@ class UploadExcelView(APIView):
                     w_t_difference=w_t_difference,
                     g_t_status=g_t_status,
                     w_t_status=w_t_status,
-                    status=overall_status
+                    status=overall_status,
+                    run_number = run_number,
                 )
                 results.append({
                     "row": index + 2,
