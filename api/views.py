@@ -449,7 +449,15 @@ class UploadExcelView(APIView):
                   overall_status = "PASS"
                 elif g_t_status == "good" and w_t_status == "low":
                     overall_status = "PASS"
+                elif g_t_status == "good" and w_t_status == "high":
+                    overall_status = "PASS"
+                elif g_t_status == "high" and w_t_status == "good":
+                    overall_status = "PASS"
                 elif g_t_status == "low" and w_t_status == "good":
+                    overall_status = "PASS"
+                elif g_t_status == "high" and w_t_status == "low":
+                    overall_status = "PASS"
+                elif g_t_status == "low" and w_t_status == "high":
                     overall_status = "PASS"
                 elif g_t_status == "low" and w_t_status == "low":
                     overall_status = "PASS"
