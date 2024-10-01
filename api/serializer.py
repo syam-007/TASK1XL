@@ -51,6 +51,15 @@ class HoleSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model= HoleSection
         fields=['id','hole_section','survey_run_in','minimum_id']
+# class SurveyRunInMaster(serializers.ModelSerializer):
+#     class Meta:
+#         model = SurveyRunInMaster
+#         fields = "__all__"
+
+# class MinimumIdSerailzer(serializers.ModelSerializer):
+#     class Meta:
+#         model = MinimumIdMaster
+#         fields = "__all__"
         
 class SurveyTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -73,7 +82,6 @@ class SequenceOfEventsSerializer(serializers.ModelSerializer):
 #-------------------JOB CREATION STARTS --------------#
 
 class CreateJobSerializer(serializers.ModelSerializer):
-    
     class Meta:
         model=CreateJob
         fields = ['job_number','location','assign_to' ,'customer','rig_number','estimated_date','unit_of_measure','service','job_created_date']
@@ -99,10 +107,12 @@ class SurveyInitialDataSerializer(serializers.ModelSerializer):
      class Meta:
          model = SurveyInitialDataDetail
          fields = '__all__'
+
 class SurveyInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = SurveyInfo
         fields = '__all__'
+
 class WellInfoSerializer(serializers.ModelSerializer):
     north_coordinates = serializers.SerializerMethodField()
     east_coorinates = serializers.SerializerMethodField()
@@ -152,44 +162,6 @@ class VehicleSerilaizer(serializers.ModelSerializer):
     class Meta:
         model = VehiclesDataMaster
         fields = '__all__'
-
-class CompleteJobCreationSerializer(serializers.Serializer):
-    job_info = JobInfoSerializer()
-    well_info = WellInfoSerializer()
-    survey_info = SurveyInfoSerializer()
-    tie_on_information = TieOnInformationSerializer()
-
-    def create(self, validated_data):
-      
-        job_info_data = validated_data.pop('job_info')
-        well_info_data = validated_data.pop('well_info')
-        survey_info_data = validated_data.pop('survey_info')
-        tie_on_info_data = validated_data.pop('tie_on_information')
-
-        job_info = JobInfoSerializer().create(validated_data=job_info_data)
-
-     
-        well_info = WellInfo.objects.create(**well_info_data)
-        survey_info = SurveyInfo.objects.create(**survey_info_data)
-        tie_on_information = TieOnInformation.objects.create(**tie_on_info_data)
-
-      
-        return {
-            'job_info': job_info,
-            'well_info': well_info,
-            'survey_info': survey_info,
-            'tie_on_information': tie_on_information
-        }
-    
-class SurveyCalculationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SurveyCalculationHeader
-        fields = '__all__'
-class SurveyCalculationDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SurveyCalculationDetails
-        fields='__all__'
-
 class JobAssetSerializer(serializers.ModelSerializer):
         job_number = CreateJob()
         cost_center =AssetHeaderSerializer(read_only = True)
@@ -208,3 +180,45 @@ class JobAssetSerializer(serializers.ModelSerializer):
                 'job_number', 'cost_center', 'gyro_data', 'vehicle', 
                 'emp_1', 'emp_2', 'emp_3', 'emp_4', 'emp_5', 'emp_6', 'emp_7'
             ]
+class CompleteJobCreationSerializer(serializers.Serializer):
+    job_info = JobInfoSerializer()
+    well_info = WellInfoSerializer()
+    survey_info = SurveyInfoSerializer()
+    tie_on_information = TieOnInformationSerializer()
+    asset_master = JobAssetSerializer()
+    
+
+    def create(self, validated_data):
+      
+        job_info_data = validated_data.pop('job_info')
+        well_info_data = validated_data.pop('well_info')
+        survey_info_data = validated_data.pop('survey_info')
+        tie_on_info_data = validated_data.pop('tie_on_information')
+        asset_master_data = validated_data.pop('asset_master')
+        
+
+        job_info = JobInfoSerializer().create(validated_data=job_info_data)
+        well_info = WellInfo.objects.create(**well_info_data)
+        survey_info = SurveyInfo.objects.create(**survey_info_data)
+        tie_on_information = TieOnInformation.objects.create(**tie_on_info_data)
+        asset_master = JobAssetMaster.objects.create(**asset_master_data)
+
+      
+        return {
+            'job_info': job_info,
+            'well_info': well_info,
+            'survey_info': survey_info,
+            'tie_on_information': tie_on_information,
+            'asset_master':asset_master
+        }
+    
+class SurveyCalculationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SurveyCalculationHeader
+        fields = '__all__'
+class SurveyCalculationDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SurveyCalculationDetails
+        fields='__all__'
+
+
