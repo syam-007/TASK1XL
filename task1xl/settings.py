@@ -91,7 +91,7 @@ WSGI_APPLICATION = "task1xl.wsgi.application"
 #     }
 # }
 
-DATABASES = { "default": { "ENGINE": "django.db.backends.mysql", "NAME": "taskxldb",        "HOST":"task1xl19sepmicro.ch04ewciazz0.me-central-1.rds.amazonaws.com",        "USER":"admin",        "PORT":"3306",        "PASSWORD":"password"    }}
+DATABASES = { "default": { "ENGINE": "django.db.backends.mysql", "NAME": "taskxldb",        "HOST":"taskxl-oct-micro.ch04ewciazz0.me-central-1.rds.amazonaws.com",        "USER":"admin",        "PORT":"3306",        "PASSWORD":"password"    }}
 CORS_ORIGIN_ALLOW_ALL = True
 
 CSRF_TRUSTED_ORIGINS = []
