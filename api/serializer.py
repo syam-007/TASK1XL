@@ -164,7 +164,7 @@ class VehicleSerilaizer(serializers.ModelSerializer):
         fields = '__all__'
 class JobAssetSerializer(serializers.ModelSerializer):
         job_number = CreateJob()
-        cost_center =AssetHeaderSerializer(read_only = True)
+        cost_center =AssetHeaderSerializer()
         gyro_data = GyroDataSerializer(read_only=True)  # Gyrodata details
         vehicle =VehicleSerilaizer(read_only=True)  # Vehicle details
         emp_1 = EmployeeSerializer(read_only=True)  # Employee 1 details
@@ -195,7 +195,7 @@ class CompleteJobCreationSerializer(serializers.Serializer):
         survey_info_data = validated_data.pop('survey_info')
         tie_on_info_data = validated_data.pop('tie_on_information')
         asset_master_data = validated_data.pop('asset_master')
-        
+
 
         job_info = JobInfoSerializer().create(validated_data=job_info_data)
         well_info = WellInfo.objects.create(**well_info_data)
@@ -211,6 +211,7 @@ class CompleteJobCreationSerializer(serializers.Serializer):
             'tie_on_information': tie_on_information,
             'asset_master':asset_master
         }
+    
     
 class SurveyCalculationSerializer(serializers.ModelSerializer):
     class Meta:
