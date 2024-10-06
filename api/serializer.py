@@ -163,7 +163,7 @@ class VehicleSerilaizer(serializers.ModelSerializer):
         model = VehiclesDataMaster
         fields = '__all__'
 class JobAssetSerializer(serializers.ModelSerializer):
-        job_number = CreateJob()
+       
         cost_center = serializers.PrimaryKeyRelatedField(queryset=AssetMasterHeader.objects.all())
         gyro_data = serializers.PrimaryKeyRelatedField(queryset=GyrodataMaster.objects.all())
         vehicle = serializers.PrimaryKeyRelatedField(queryset=VehiclesDataMaster.objects.all())
@@ -177,41 +177,47 @@ class JobAssetSerializer(serializers.ModelSerializer):
         class Meta:
             model = JobAssetMaster
             fields = [
-                'job_number', 'cost_center', 'gyro_data', 'vehicle', 
+                 'cost_center', 'gyro_data', 'vehicle', 
                 'emp_1', 'emp_2', 'emp_3', 'emp_4', 'emp_5', 'emp_6', 'emp_7'
             ]
+        
 class CompleteJobCreationSerializer(serializers.Serializer):
     job_info = JobInfoSerializer()
     well_info = WellInfoSerializer()
     survey_info = SurveyInfoSerializer()
     tie_on_information = TieOnInformationSerializer()
     asset_master = JobAssetSerializer()
-    
 
     def create(self, validated_data):
-      
+        # Extract the different sections of the data
         job_info_data = validated_data.pop('job_info')
         well_info_data = validated_data.pop('well_info')
         survey_info_data = validated_data.pop('survey_info')
         tie_on_info_data = validated_data.pop('tie_on_information')
         asset_master_data = validated_data.pop('asset_master')
 
-
+       
         job_info = JobInfoSerializer().create(validated_data=job_info_data)
+        job_number = job_info.job_number 
+
+       
         well_info = WellInfo.objects.create(**well_info_data)
         survey_info = SurveyInfo.objects.create(**survey_info_data)
         tie_on_information = TieOnInformation.objects.create(**tie_on_info_data)
+
+       
+        asset_master_data['job_number'] = job_number 
         asset_master = JobAssetMaster.objects.create(**asset_master_data)
 
-      
+        
         return {
             'job_info': job_info,
             'well_info': well_info,
             'survey_info': survey_info,
             'tie_on_information': tie_on_information,
-            'asset_master':asset_master
+            'asset_master': asset_master
         }
-    
+
     
 class SurveyCalculationSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 from  .serializer import ( CustomerSerializer,UnitOfMeasureSeializer,JobInfoSerializer,
                           JodDetailSerializer,ServiceTypeSerializer,
                           RigMasterSerilalizer,WelltypeSerializer,
@@ -10,8 +11,12 @@ from  .serializer import ( CustomerSerializer,UnitOfMeasureSeializer,JobInfoSeri
                           SurveyInfoSerializer,TieOnInformationSerializer,
                           CompleteJobCreationSerializer,AssetInfoSerializer,AssetHeaderSerializer,GyroDataSerializer,VehicleSerilaizer,JobAssetSerializer,SequenceOfEventsSerializer
                           ,SoeMasterSerializer)
-from rest_framework.viewsets import ModelViewSet
-from .models import JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,SurveyInfo,TieOnInformation,AssetMasterDetails,AssetMasterHeader,GyrodataMaster,VehiclesDataMaster,JobAssetMaster,SequenceOfEventsMaster,SoeMaster
+
+from .models import (JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,
+                    SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,
+                    SurveyInfo,TieOnInformation,AssetMasterDetails,AssetMasterHeader,GyrodataMaster,VehiclesDataMaster,JobAssetMaster,
+                    SequenceOfEventsMaster,SoeMaster)
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 import pandas as pd
@@ -165,7 +170,6 @@ class MasterDataView(APIView):
 class CombinedJobCreationView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = CompleteJobCreationSerializer(data=request.data)
-
         if serializer.is_valid():
             serializer.save()  
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -193,9 +197,7 @@ class JobDetailsView(APIView):
                
                 survey_info_serializer = SurveyInfoSerializer(survey_info_list, many=True).data
                 tie_on_info_serializer = TieOnInformationSerializer(tie_on_info_list, many=True).data
-                
                 job_info_serializer = JobInfoSerializer(job_info) if job_info else None
-
                 response_data = {
                     "job_info": job_info_serializer.data if job_info_serializer else None,
                     "customer_details": customer_serializer.data if customer_serializer else None,
@@ -216,6 +218,7 @@ class Asset(ModelViewSet):
     queryset = JobAssetMaster.objects.all()
     serializer_class = JobAssetSerializer
 
+#excel-upload-------starts----------!
 class UpdateAsset(APIView):
     def get(self, request, job_number=None):
         try:
@@ -237,19 +240,13 @@ class UpdateAsset(APIView):
         
     def post(self, request, job_number=None):
         try:
-            # Check if the job_number exists in CreateJob
             job = CreateJob.objects.get(job_number=job_number)
-
-            # Check if asset details already exist for the job_number
             if JobAssetMaster.objects.filter(job_number=job).exists():
                 return Response({
                     "error": f"Asset details for job_number {job_number} already exist."
                 }, status=status.HTTP_400_BAD_REQUEST)
+            data = request.data.copy()  
 
-            # Prepare data from request
-            data = request.data.copy()  # Create a mutable copy
-
-            # Fetch related model instances
             cost_center = AssetMasterHeader.objects.get(id=data.get('cost_center'))
             gyro_data = GyrodataMaster.objects.get(id=data.get('gyro_data'))
             vehicle = VehiclesDataMaster.objects.get(id=data.get('vehicle'))
@@ -261,9 +258,9 @@ class UpdateAsset(APIView):
             emp_6 = EmployeeMaster.objects.get(id=data.get('emp_6')) if data.get('emp_6') else None
             emp_7 = EmployeeMaster.objects.get(id=data.get('emp_7')) if data.get('emp_7') else None
 
-            # Create a new instance of JobAssetMaster
+           
             job_asset_master = JobAssetMaster(
-                job_number=job,  # Set the job_number to the job object
+                job_number=job,
                 cost_center=cost_center,
                 gyro_data=gyro_data,
                 vehicle=vehicle,
@@ -275,11 +272,7 @@ class UpdateAsset(APIView):
                 emp_6=emp_6,
                 emp_7=emp_7
             )
-
-            # Save the instance to the database
             job_asset_master.save()
-
-            # Prepare response data
             response_data = {
                 "id": job_asset_master.id,
                 "job_number": job.job_number,
@@ -325,6 +318,7 @@ class UpdateAsset(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class UploadExcelView(APIView):
+    
     def get(self, request, job_number=None, run_number=None):
      if job_number and run_number is not None:
         try:
@@ -440,11 +434,9 @@ class UploadExcelView(APIView):
                 total_g_t_difference += g_t_difference
                 total_w_t_difference += w_t_difference
 
-                # Status calculations
                 g_t_status = "high" if -1 <= g_t_difference <= 1 else "good" if -3 <= g_t_difference <= 3 else "low" if -10 <= g_t_difference <= 10 else "n/c"
                 w_t_status = "high" if -1 <= w_t_difference <= 1 else "good" if -5 <= w_t_difference <= 5 else "low" if -10 <= w_t_difference <= 10 else "n/c"
 
-                # Overall status determination
                 if g_t_status == "good" and w_t_status == "good":
                   overall_status = "PASS"
                 elif g_t_status == "good" and w_t_status == "low":
@@ -503,8 +495,7 @@ class UploadExcelView(APIView):
 
             except Exception as e:
                 errors.append({"row": index + 2, "error": str(e)})
-
-        # Score calculations
+ 
         g_t_score = f"{total_g_t_difference_pass:.2f} / {total_g_t_difference:.2f}"
         w_t_score = f"{total_w_t_difference_pass:.2f} / {total_w_t_difference:.2f}"
 
@@ -595,6 +586,7 @@ class UploadExcelView(APIView):
      else:
         return Response({"error": "Both job_number, run_number, and data_id are required"}, status=status.HTTP_400_BAD_REQUEST)
 
+#----------------------------------------survey-calculations starts ----------------------------------------------!
        
 class SurveyCalculationView(APIView):
     def get(self, request, job_number=None, run_number=None):
@@ -679,28 +671,26 @@ class SurveyCalculationView(APIView):
         except Exception as e:
             return Response({"error": f"Error creating SurveyCalculationHeader: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
     
 class SurveyCalculationDetailsView(APIView):
     def get(self, request, job_number=None, run_number=None):
         if job_number and run_number:
             try:
-                # Get the SurveyCalculationHeader for the given job_number and run_number
+               
                 header = SurveyCalculationHeader.objects.get(job_number__job_number=job_number, run=run_number)
 
-                # Get all SurveyCalculationDetails records that match the header id (header_id)
+              
                 survey_details = SurveyCalculationDetails.objects.filter(header_id=header.id)
 
                 if not survey_details.exists():
                     return Response({"error": f"No survey calculation details found for header ID {header.id}"}, status=status.HTTP_404_NOT_FOUND)
 
-                # Serialize the SurveyCalculationDetail records
+              
                 serializer = SurveyCalculationDetailSerializer(survey_details, many=True)
 
-                # Calculate the max inclination
+              
                 max_inclination = survey_details.aggregate(max_inclination=models.Max('inclination'))['max_inclination']
-
-                # Get the last row of the SurveyCalculationDetails table
+               
                 last_row = survey_details.order_by('-id').first()
                 last_row_details = {
                     "header_id": header.id,
@@ -837,7 +827,7 @@ class SurveyCalculationDetailsView(APIView):
                             dog_leg_radians = math.acos(
                                 math.cos(delta_inclination) +
                                 (math.sin(math.radians(float(current_inclination))) *
-                                 math.sin(math.radians(float(previous_inclination)))) *
+                                math.sin(math.radians(float(previous_inclination)))) *
                                 (math.cos(delta_azimuth) - 1)
                             )
                             dog_leg = math.degrees(dog_leg_radians)
@@ -860,8 +850,8 @@ class SurveyCalculationDetailsView(APIView):
                             math.cos(math.radians(float(previous_inclination))))), 2)
                     else:
                         tvd = None
-
-                # Latitude Calculation (+N/-S)
+                        
+                    # Latitude Calculation (+N/-S)
                     if previous_latitude is not None and ratio_factor is not None and CL is not None:
                         latitude = round(float(previous_latitude) + (
                             float(ratio_factor) * float(CL) / 2 *
@@ -984,7 +974,7 @@ class SoeViewSet(APIView):
      def get(self, request, job_number=None):
         if job_number is not None:
             try:
-                job = CreateJob.objects.get(job_number=job_number)
+                job = CreateJob.objects.get(job_number = job_number)
                 events = SequenceOfEventsMaster.objects.filter(job_number=job)
                 if not events.exists():
                     return Response({
