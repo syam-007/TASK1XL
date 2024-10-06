@@ -95,13 +95,9 @@ class CreateJob(models.Model):
     estimated_date = models.DateTimeField()
     job_created_date = models.DateTimeField()
     job_assign_date = models.DateTimeField(auto_now=True)
+    
     class Meta:
-  
       db_table = 'task_create_job'
-
-
-
-
 
 
 class JobInfo(models.Model):
@@ -111,7 +107,6 @@ class JobInfo(models.Model):
     well_id = models.IntegerField()
     well_name = models.CharField(max_length=255)
    
-
     class Meta:
         db_table = 'task_job_info'
 
@@ -142,6 +137,7 @@ class JobInfo(models.Model):
     @property
     def location(self):
         return self.job_number.location
+    
 
 class WellInfo(models.Model):
     well_info_id = models.AutoField(primary_key=True)
@@ -232,7 +228,8 @@ class SurveyInfo(models.Model):
             self.minimum_id = self.hole_section.minimum_id
 
         super(SurveyInfo, self).save(*args, **kwargs)
-   
+
+
 class TieOnInformation(models.Model):
     measured_depth = models.DecimalField(max_digits=6,decimal_places=2)
     true_vertical_depth = models.DecimalField(max_digits=6,decimal_places=2)
@@ -246,7 +243,6 @@ class TieOnInformation(models.Model):
         db_table = 'task_survey_tie_on_info'
 
 
-
 class SequenceOfEventsMaster(models.Model):
     soe_desc = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now=True)
@@ -254,12 +250,12 @@ class SequenceOfEventsMaster(models.Model):
 
     class Meta:
         db_table = 'task_soe_Details'
+
 class SoeMaster(models.Model):
 
     action = models.CharField(max_length=255)
     class Meta:
         db_table = 'task_soe_master'
-
 
 
 class AssetMasterHeader(models.Model):
@@ -274,7 +270,7 @@ class AssetMasterDetails(models.Model):
     asset_description = models.CharField(max_length=255)
     serial_no = models.CharField(max_length=255)
     status = models.CharField(max_length=255)
-    cost_center = models.ForeignKey(AssetMasterHeader,on_delete=models.PROTECT)
+    cost_center = models.ForeignKey(AssetMasterHeader,on_delete=models.PROTECT,db_column="cost_center")
 
     class Meta:
         db_table = 'task_asset_master_details'
@@ -298,11 +294,8 @@ class VehiclesDataMaster(models.Model):
     asset_description = models.CharField(max_length=255)
     serial_no = models.CharField(max_length=255)
     status = models.CharField(max_length=255)
-   
-
     class Meta:
         db_table = 'task_vehicle_master'
-
 
 
 class JobAssetMaster(models.Model):
