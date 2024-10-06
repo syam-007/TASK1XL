@@ -164,16 +164,16 @@ class VehicleSerilaizer(serializers.ModelSerializer):
         fields = '__all__'
 class JobAssetSerializer(serializers.ModelSerializer):
         job_number = CreateJob()
-        cost_center =AssetHeaderSerializer()
-        gyro_data = GyroDataSerializer(read_only=True)  # Gyrodata details
-        vehicle =VehicleSerilaizer(read_only=True)  # Vehicle details
-        emp_1 = EmployeeSerializer(read_only=True)  # Employee 1 details
-        emp_2 = EmployeeSerializer(read_only=True)  # Employee 2 details
-        emp_3 = EmployeeSerializer(read_only=True)  # Employee 3 details
-        emp_4 = EmployeeSerializer(read_only=True)  # Employee 4 details
-        emp_5 = EmployeeSerializer(read_only=True, allow_null=True)  # Employee 5 details
-        emp_6 = EmployeeSerializer(read_only=True, allow_null=True)  # Employee 6 details
-        emp_7 = EmployeeSerializer(read_only=True, allow_null=True)
+        cost_center = serializers.PrimaryKeyRelatedField(queryset=AssetMasterHeader.objects.all())
+        gyro_data = serializers.PrimaryKeyRelatedField(queryset=GyrodataMaster.objects.all())
+        vehicle = serializers.PrimaryKeyRelatedField(queryset=VehiclesDataMaster.objects.all())
+        emp_1 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_2 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_3 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_4 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_5 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_6 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_7 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
         class Meta:
             model = JobAssetMaster
             fields = [
