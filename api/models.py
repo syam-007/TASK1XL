@@ -373,7 +373,7 @@ class SurveyCalculationDetails(models.Model):
     latitude = models.DecimalField(max_digits=3,decimal_places=2,db_column="+N/-S")
     departure = models.DecimalField(max_digits=3,decimal_places=2,db_column="+E/-W")
     DLS = models.DecimalField(max_digits=4,decimal_places=2,null=True)
-    closure_distance= models.DecimalField(max_digits=4,decimal_places=2)
+    closure_distance= models.DecimalField(max_digits=6,decimal_places=2)
     closure_direction = models.DecimalField(max_digits=4,decimal_places=2)
     CL = models.DecimalField(max_digits=4,decimal_places=2,null=True)
     dog_leg = models.DecimalField(max_digits=6,decimal_places=5,null=True)
