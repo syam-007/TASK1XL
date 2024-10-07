@@ -867,7 +867,7 @@ class SurveyCalculationDetailsView(APIView):
                         departure = round(float(previous_departure) + (
                             float(ratio_factor) * float(CL) / 2 *
                             ((math.sin(math.radians(float(current_inclination))) * math.sin(math.radians(float(current_azimuth)))) +
-                            (math.sin(math.radians(float(previous_inclination))) * math.sin(math.radians(float(previous_azimuth)))))))
+                            (math.sin(math.radians(float(previous_inclination))) * math.sin(math.radians(float(previous_azimuth)))))), 2)
                     else:
                         departure = None
 
