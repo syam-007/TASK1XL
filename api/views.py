@@ -218,7 +218,8 @@ class Asset(ModelViewSet):
     queryset = JobAssetMaster.objects.all()
     serializer_class = JobAssetSerializer
 
-#excel-upload-------starts----------!
+#!-------------------------------------excel-upload-------starts-----------------------------------------!
+
 class UpdateAsset(APIView):
     def get(self, request, job_number=None):
         try:
@@ -322,7 +323,6 @@ class UploadExcelView(APIView):
     def get(self, request, job_number=None, run_number=None):
      if job_number and run_number is not None:
         try:
-          
             job = CreateJob.objects.get(job_number=job_number)
             survey_info_header  = SurveyInitialDataHeader.objects.get(job_number=job, run_number=run_number)
 
@@ -711,8 +711,6 @@ class SurveyCalculationDetailsView(APIView):
 
         return Response({"error": "job_number and run_number parameters are required"}, status=status.HTTP_400_BAD_REQUEST)
     
-
-
     
     def post(self, request, *args, **kwargs):
         job_number = request.data.get('job_number')
@@ -803,7 +801,7 @@ class SurveyCalculationDetailsView(APIView):
                 "Vertical_Section": survey_header.Vertical_Section
             })
 
-            initial_data_details = SurveyInitialDataDetail.objects.filter(job_number=job).order_by('depth')
+            initial_data_details = SurveyInitialDataDetail.objects.filter(job_number=job,run_number = run_number).order_by('depth')
             for initial_data in initial_data_details:
                 try:
                     current_measured_depth = initial_data.depth
@@ -812,7 +810,6 @@ class SurveyCalculationDetailsView(APIView):
             
 
                     CL = current_measured_depth - previous_measured_depth
-                    print(f"{CL}")
                     current_inclination = float(initial_data.Inc)
                     current_azimuth = float(initial_data.AzG)
 
