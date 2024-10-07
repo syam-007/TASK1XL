@@ -218,7 +218,6 @@ class Asset(ModelViewSet):
     queryset = JobAssetMaster.objects.all()
     serializer_class = JobAssetSerializer
 
-#!-------------------------------------excel-upload-------starts-----------------------------------------!
 
 class UpdateAsset(APIView):
     def get(self, request, job_number=None):
@@ -242,6 +241,7 @@ class UpdateAsset(APIView):
     def post(self, request, job_number=None):
         try:
             job = CreateJob.objects.get(job_number=job_number)
+          
             if JobAssetMaster.objects.filter(job_number=job).exists():
                 return Response({
                     "error": f"Asset details for job_number {job_number} already exist."
@@ -318,6 +318,11 @@ class UpdateAsset(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+#!-------------------------------------excel-upload-------starts-----------------------------------------!
+
+
 class UploadExcelView(APIView):
     
     def get(self, request, job_number=None, run_number=None):
@@ -613,7 +618,7 @@ class SurveyCalculationView(APIView):
 
     def post(self, request, *args, **kwargs):
         job_number = request.data.get('job_number')
-        run_number = request.data.get('run_number')  
+        run_number = request.data.get('run_number')
         
         if not job_number:
             return Response({"error": "Missing job_number"}, status=status.HTTP_400_BAD_REQUEST)
@@ -862,7 +867,7 @@ class SurveyCalculationDetailsView(APIView):
                         departure = round(float(previous_departure) + (
                             float(ratio_factor) * float(CL) / 2 *
                             ((math.sin(math.radians(float(current_inclination))) * math.sin(math.radians(float(current_azimuth)))) +
-                            (math.sin(math.radians(float(previous_inclination))) * math.sin(math.radians(float(previous_azimuth)))))), 2)
+                            (math.sin(math.radians(float(previous_inclination))) * math.sin(math.radians(float(previous_azimuth)))))))
                     else:
                         departure = None
 
@@ -881,7 +886,7 @@ class SurveyCalculationDetailsView(APIView):
                             elif float(latitude) > 0 and float(departure) > 0:
                                 closure_direction = round(math.degrees(atan_value), 2)
                             else:
-                                closure_direction = round(360 + math.degrees(atan_value), 2)
+                                closure_direction = round(360 + math.degrees(atan_value),2)
                         except ZeroDivisionError:
                             closure_direction = None  
                     else:
