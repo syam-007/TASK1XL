@@ -190,7 +190,7 @@ class WellInfo(models.Model):
         G18 = float(self.GLE)
         G_t = (
             (9.780327 * (1 + (0.0053024 * (math.sin(north_coord_radians) ** 2)) -
-            (0.0000058 * (math.sin(two_north_coord_radians) ** 2)))) -((3.086 * 10 ** -6) * G18)
+            (0.0000058 * (math.sin(two_north_coord_radians) ** 2)))) - ((3.086 * 10 ** -6) * G18)
         ) * 102
         return float(f"{G_t:.5f}")
     @property
@@ -366,8 +366,8 @@ class SurveyCalculationHeader(models.Model):
 class SurveyCalculationDetails(models.Model):
     header_id = models.ForeignKey(SurveyCalculationHeader,on_delete=models.CASCADE,db_column='header_id')
     measured_depth = models.DecimalField(max_digits=6,decimal_places=2)
-    inclination = models.DecimalField(max_digits=3,decimal_places=2)
-    azimuth = models.DecimalField(max_digits=3,decimal_places=2)
+    inclination = models.DecimalField(max_digits=8,decimal_places=4)
+    azimuth = models.DecimalField(max_digits=8,decimal_places=4)
     tvd = models.DecimalField(max_digits=5,decimal_places=2,null=True)
     Vertical_Section = models.DecimalField(max_digits=3,decimal_places=2)
     latitude = models.DecimalField(max_digits=3,decimal_places=2,db_column="+N/-S")
