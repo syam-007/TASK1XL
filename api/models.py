@@ -156,7 +156,7 @@ class WellInfo(models.Model):
     expected_wellbore_inclination= models.IntegerField()
     central_meridian = models.IntegerField()
     GLE = models.DecimalField(max_digits=6,decimal_places=2)
-    RKB = models.DecimalField(max_digits=3,decimal_places=2)
+    RKB = models.DecimalField(max_digits=6,decimal_places=2)
     ref_elivation = models.CharField(max_length=255)
     ref_datum  = models.CharField(max_length=255)
 
