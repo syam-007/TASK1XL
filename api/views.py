@@ -864,10 +864,7 @@ class SurveyCalculationDetailsView(APIView):
 
                     # Departure Calculation (+E/-W)
                     if previous_departure is not None and ratio_factor is not None and CL is not None:
-                        print(f"{float(previous_departure) + (
-                            float(ratio_factor) * float(CL) / 2 *
-                            ((math.sin(math.radians(float(current_inclination))) * math.sin(math.radians(float(current_azimuth)))) +
-                            (math.sin(math.radians(float(previous_inclination))) * math.sin(math.radians(float(previous_azimuth))))))}")
+        
                         departure = round(float(previous_departure) + (
                             float(ratio_factor) * float(CL) / 2 *
                             ((math.sin(math.radians(float(current_inclination))) * math.sin(math.radians(float(current_azimuth)))) +
