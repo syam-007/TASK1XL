@@ -199,6 +199,13 @@ class WellInfo(models.Model):
     @property
     def min_G_t(self):  
         return round(self.get_G_t - 10,2) 
+    @property
+    def get_grid_correction(self):
+        central_meridian = self.central_meridian
+        longitude = self.get_east_coordinate
+        latitude = self.get_north_coordinate
+        grid_correction = (longitude - central_meridian) * math.sin(math.radians(latitude))
+        return round(grid_correction, 6)
 
 class SurveyInfo(models.Model):
     survey_info_id = models.AutoField(primary_key=True)
@@ -381,3 +388,10 @@ class SurveyCalculationDetails(models.Model):
     
     class Meta:
         db_table = 'task_survey_calculation_details'
+
+
+class InterpolationData(models.Model):
+    depth  = models.DecimalField(max_digits=6,decimal_places=2)
+    inclination = models.DecimalField(max_digits=3,decimal_places=2)
+    azimuth = models.DecimalField(max_digits=6,decimal_places=2)
+    range = models.IntegerField()

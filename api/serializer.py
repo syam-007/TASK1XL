@@ -122,6 +122,7 @@ class WellInfoSerializer(serializers.ModelSerializer):
     g_t = serializers.SerializerMethodField()
     max_gt = serializers.SerializerMethodField()
     min_gt = serializers.SerializerMethodField()
+    grid_correction = serializers.SerializerMethodField()
 
     class Meta:
         model = WellInfo
@@ -142,6 +143,8 @@ class WellInfoSerializer(serializers.ModelSerializer):
         return obj. max_G_t
     def get_min_gt(self,obj):
         return obj. min_G_t
+    def get_grid_correction(self,obj):
+        return obj.get_grid_correction
 
 class AssetHeaderSerializer(serializers.ModelSerializer):
     class Meta:
