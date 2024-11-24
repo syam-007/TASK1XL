@@ -10,12 +10,12 @@ from  .serializer import ( CustomerSerializer,UnitOfMeasureSeializer,JobInfoSeri
                           SurveyCalculationSerializer,SurveyCalculationDetailSerializer,
                           SurveyInfoSerializer,TieOnInformationSerializer,
                           CompleteJobCreationSerializer,AssetInfoSerializer,AssetHeaderSerializer,GyroDataSerializer,VehicleSerilaizer,JobAssetSerializer,SequenceOfEventsSerializer
-                          ,SoeMasterSerializer)
+                          ,SoeMasterSerializer,InterPolationDataHeaderSerializer,InterPolationDataDeatilsSerializer)
 
 from .models import (JobInfo,CustomerMaster,UnitofMeasureMaster,ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,SurveyTypes,CreateJob,
                     SurveyInitialDataHeader,SurveyInitialDataDetail,WellInfo,EmployeeMaster,TieOnInformation,SurveyCalculationHeader, SurveyCalculationDetails,
                     SurveyInfo,TieOnInformation,AssetMasterDetails,AssetMasterHeader,GyrodataMaster,VehiclesDataMaster,JobAssetMaster,
-                    SequenceOfEventsMaster,SoeMaster)
+                    SequenceOfEventsMaster,SoeMaster,InterPolationDataHeader,InterPolationDataDeatils)
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
@@ -30,6 +30,9 @@ from django.db.models import Sum
 from django.db import models
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
+from decimal import Decimal, ROUND_HALF_UP
+
+
 
 
 class JobViewSet(ModelViewSet):
@@ -973,6 +976,332 @@ class SurveyCalculationDetailsView(APIView):
     
 
 
+class InterPolationDataHeaderViewSet(APIView):
+    def get(self, request, job_number=None, run_number=None):
+        
+        if job_number and run_number:
+            records = InterPolationDataHeader.objects.filter(job_number=job_number, run_number=run_number)
+        else:
+            records = InterPolationDataHeader.objects.all()
+        if not records.exists():
+            return Response({'error': 'No records found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = InterPolationDataHeaderSerializer(records, many=True)  
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    
+    def post(self, request, job_number=None, run_number=None):
+       
+        try:
+            survey_info = SurveyInfo.objects.get(job_number=job_number, run_number=run_number)
+        except SurveyInfo.DoesNotExist:
+            return Response({'error': 'Job number or run number does not exist in SurveyInfo.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+       
+        proposal_direction_type = request.data.get('proposal_direction_type')
+
+        if proposal_direction_type == 'initial':
+            proposal_direction = survey_info.proposal_direction 
+        elif proposal_direction_type == 'bottom_hole_closure':
+            
+            proposal_direction = Decimal('0')
+        elif proposal_direction_type == 'manual':
+            
+            proposal_direction = request.data.get('proposal_direction')
+            if proposal_direction is None:
+                return Response({'error': 'Manual proposal direction is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                proposal_direction = Decimal(proposal_direction)
+            except (ValueError, TypeError):
+                return Response({'error': 'Proposal direction must be a valid decimal number.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'error': 'Invalid proposal_direction_type.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = InterPolationDataHeaderSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save(
+                job_number=survey_info.job_number, 
+                run_number=run_number, 
+                proposal_direction=proposal_direction, 
+                status=0
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class InterPolationDataDeatilsViewSet(APIView):
+    
+    def get(self, request, job_number, run_number,resolution):
+        try:
+            header = InterPolationDataHeader.objects.get(job_number=job_number, run_number=run_number,resolution=resolution)
+        except InterPolationDataHeader.DoesNotExist:
+            return Response({'error': 'Invalid job_number or run_number.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+    def post(self, request, job_number, run_number, resolution):
+        try:
+            # Fetch required data from the database
+            header = InterPolationDataHeader.objects.get(job_number=job_number, run_number=run_number)
+            tie_on_info = TieOnInformation.objects.get(job_number=job_number, run_number=run_number)
+        except (InterPolationDataHeader.DoesNotExist, TieOnInformation.DoesNotExist):
+            return Response({'error': 'Invalid job_number or run_number.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Fetch survey data
+        survey_data_rows = list(SurveyInitialDataDetail.objects.filter(
+            job_number=job_number, run_number=run_number).order_by('depth'))
+        if not survey_data_rows:
+            return Response({'error': 'No SurveyInitialDataDetail found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        results = []
+        resolution_value = float(resolution)
+        range_from = header.range_from or float(tie_on_info.measured_depth)
+        range_to = header.range_to or float(survey_data_rows[-1].depth)
+
+        # Fetch the initial TVD and inclination from the SurveyCalculationDetails
+        previous_tvd = self.get_initial_tvd(job_number, run_number)
+        previous_inclination = self.get_initial_inclination(job_number, run_number)
+        previous_latitude = self.get_initial_latitude(job_number,run_number)
+        previous_azimuth = self.get_initial_azimuth(job_number, run_number)
+        
+    
+        # Check if previous_tvd and previous_inclination are available
+        if previous_tvd is None or previous_inclination is None:
+            return Response({'error': 'Initial TVD or inclination not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Interpolation logic
+        upper_depth, upper_inclination, upper_azimuth = self.get_previous_survey_data(job_number, run_number, range_from, tie_on_info)
+        lower_depth, lower_inclination, lower_azimuth = self.get_next_survey_data(survey_data_rows, range_from, range_to)
+
+        interpolated_inclination, interpolated_azimuth = self.interpolate(
+            upper_depth, upper_inclination, upper_azimuth,
+            lower_depth, lower_inclination, lower_azimuth, range_from
+        )
+
+        dog_leg = self.calculate_dog_leg(
+            upper_inclination, upper_azimuth, interpolated_inclination, interpolated_azimuth
+        )
+
+        # Calculate the initial TVD
+        previous_measured_depth = upper_depth
+        current_measured_depth = range_from
+        CL = current_measured_depth - previous_measured_depth
+       
+        ratio_factor = self.calculate_ratio_factor(dog_leg)
+        current_tvd = self.calculate_tvd(previous_tvd, ratio_factor, CL, interpolated_inclination, upper_inclination)
+        current_latitude = self.calculate_northing(
+        previous_latitude, ratio_factor, CL,
+        interpolated_inclination, interpolated_azimuth,
+        previous_inclination, previous_azimuth)
+   
+        # Update the previous values for the next iteration
+        previous_tvd = current_tvd
+        previous_inclination = interpolated_inclination
+        previous_azimuth = interpolated_azimuth
+        previous_latitude = current_latitude
+        previous_departure = self.get_initial_departure(job_number, run_number)
+        
+
+        results.append(self.format_result(
+            range_from, interpolated_inclination, interpolated_azimuth,
+             dog_leg, CL, ratio_factor, current_tvd,current_latitude,previous_departure
+        ))
+
+        upper_depth, upper_inclination, upper_azimuth = range_from, interpolated_inclination, interpolated_azimuth
+
+        # Loop through survey data rows
+        for survey_data in survey_data_rows:
+            lower_depth = float(survey_data.depth)
+            if lower_depth < range_from or lower_depth > range_to:
+                continue
+
+            while upper_depth < lower_depth:
+                new_depth = min(upper_depth + resolution_value, lower_depth)
+
+                # Perform interpolation between the depths
+                interpolated_inclination, interpolated_azimuth = self.interpolate(
+                    upper_depth, upper_inclination, upper_azimuth,
+                    lower_depth, float(survey_data.Inc), float(survey_data.AzG), new_depth
+                )
+                dog_leg = self.calculate_dog_leg(upper_inclination, upper_azimuth,
+                                                 interpolated_inclination, interpolated_azimuth)
+
+                # Calculate TVD and update previous values
+                previous_measured_depth = upper_depth
+                current_measured_depth = new_depth
+                CL = current_measured_depth - previous_measured_depth
+                ratio_factor = self.calculate_ratio_factor(dog_leg)
+                current_tvd = self.calculate_tvd(previous_tvd, ratio_factor, CL, interpolated_inclination, upper_inclination)
+                current_latitude = self.calculate_northing(
+                            previous_latitude, ratio_factor, CL,
+                            interpolated_inclination, interpolated_azimuth,
+                            previous_inclination, previous_azimuth
+                        )
+                current_departure = self.calculate_departure(
+                    previous_departure, ratio_factor, CL,
+                    interpolated_inclination, interpolated_azimuth,
+                    previous_inclination, previous_azimuth
+                )
+               
+                # Append the result to the list
+                results.append(self.format_result(
+                    new_depth, interpolated_inclination, interpolated_azimuth,
+                     dog_leg, CL, ratio_factor, current_tvd,current_latitude,current_departure
+                ))
+
+                # Update the upper values for the next loop
+                upper_depth = new_depth
+                upper_inclination, upper_azimuth = interpolated_inclination, interpolated_azimuth
+                previous_inclination = interpolated_inclination
+                previous_azimuth = interpolated_azimuth
+                previous_latitude = current_latitude
+                previous_departure = current_departure
+
+        return Response({"results": results}, status=status.HTTP_200_OK)
+
+
+    def calculate_northing(self, previous_latitude, ratio_factor, CL, current_inclination, current_azimuth, previous_inclination, previous_azimuth):
+        
+        if previous_latitude is not None and ratio_factor is not None and CL is not None:
+            latitude = round(float(previous_latitude) + (
+                            float(ratio_factor) * float(CL) / 2 *
+                            ((math.sin(math.radians(float(current_inclination))) * math.cos(math.radians(float(current_azimuth)))) +
+                            (math.sin(math.radians(float(previous_inclination))) * math.cos(math.radians(float(previous_azimuth)))))), 2)
+            return latitude
+        return None
+    def calculate_departure(self, previous_departure, ratio_factor, CL, current_inclination, current_azimuth, previous_inclination, previous_azimuth):
+        if previous_departure is not None and ratio_factor is not None and CL is not None:
+            departure = previous_departure + (
+                ratio_factor * CL / 2 *
+                ((math.sin(math.radians(current_inclination)) * math.sin(math.radians(current_azimuth))) +
+                (math.sin(math.radians(previous_inclination)) * math.sin(math.radians(previous_azimuth))))
+            )
+            return round(departure, 3)
+        return None
+    def get_initial_departure(self, job_number, run_number):
+        try:
+            survey_header = SurveyCalculationHeader.objects.get(
+                job_number=job_number,
+                run=run_number
+            )
+            return float(survey_header.departure)
+        except SurveyCalculationHeader.DoesNotExist:
+            return None
+    def get_initial_azimuth(self,job_number,run_number):
+            try:
+                survey_header = SurveyCalculationHeader.objects.get(
+                    job_number = job_number,
+                    run = run_number
+                )
+                return float(survey_header.azimuth)
+            except SurveyCalculationHeader.DoesNotExist:
+                return None
+    def get_initial_latitude(self,job_number,run_number):
+        try:
+            survey_header = SurveyCalculationHeader.objects.get(
+                job_number = job_number,
+                run = run_number
+            )
+            return float(survey_header.latitude)
+        except SurveyCalculationHeader.DoesNotExist:
+            return None
+    def get_initial_tvd(self, job_number, run_number):
+    # Fetch the initial TVD directly from SurveyCalculationHeader
+        try:
+            survey_header = SurveyCalculationHeader.objects.get(
+                job_number=job_number,
+                run=run_number
+            )
+            return float(survey_header.true_vertical_depth)
+        except SurveyCalculationHeader.DoesNotExist:
+            return None
+
+    def get_initial_inclination(self, job_number, run_number):
+        try:
+            survey_header = SurveyCalculationHeader.objects.get(
+                job_number=job_number,
+                run=run_number
+            )
+            return float(survey_header.inclination)
+        except SurveyCalculationHeader.DoesNotExist:
+            return None
+
+    def get_previous_survey_data(self, job_number,run_number, range_from, tie_on_info):
+            previous_data = SurveyCalculationHeader.objects.filter(
+            job_number=job_number,
+            run=run_number,
+            depth__lt=range_from  
+        ).order_by('-depth').first()  
+
+            if previous_data:
+                return float(previous_data.depth), float(previous_data.inclination), float(previous_data.azimuth)
+            return float(tie_on_info.measured_depth), float(tie_on_info.inclination), float(tie_on_info.azimuth)
+
+    def get_next_survey_data(self, survey_data_rows, range_from, range_to):
+        next_data = next((data for data in survey_data_rows if data.depth >= range_from), None)
+        return (float(next_data.depth), float(next_data.Inc), float(next_data.AzG)) if next_data else (range_from, 0, 0)
+
+    def interpolate(self, upper_depth, upper_inclination, upper_azimuth, lower_depth, lower_inclination, lower_azimuth, target_depth):
+        ratio = (target_depth - upper_depth) / (lower_depth - upper_depth)
+        interpolated_inclination = upper_inclination + (lower_inclination - upper_inclination) * ratio
+        delta_azimuth = lower_azimuth - upper_azimuth
+        if delta_azimuth > 180:
+            delta_azimuth -= 360
+        elif delta_azimuth < -180:
+            delta_azimuth += 360
+
+        interpolated_azimuth = upper_azimuth + delta_azimuth * ratio
+
+        if interpolated_azimuth < 0:
+                interpolated_azimuth += 360
+        elif interpolated_azimuth >= 360:
+                interpolated_azimuth -= 360
+        return round(interpolated_inclination, 2), round(interpolated_azimuth, 2)
+
+    def calculate_dog_leg(self, previous_inclination, previous_azimuth, current_inclination, current_azimuth):
+        delta_inclination = math.radians(current_inclination - previous_inclination)
+        delta_azimuth = math.radians(current_azimuth - previous_azimuth)
+        try:
+            dog_leg_radians = math.acos(
+                math.cos(delta_inclination) +
+                (math.sin(math.radians(current_inclination)) * math.sin(math.radians(previous_inclination))) *
+                (math.cos(delta_azimuth) - 1)
+            )
+            return math.degrees(dog_leg_radians)
+        except ValueError:
+            return 0.0
+
+    def calculate_ratio_factor(self, dog_leg):
+        if dog_leg < 0.25:
+            return 1
+        return (2 / dog_leg) * math.degrees(math.tan(math.radians(dog_leg / 2)))
+
+    def calculate_tvd(self, previous_tvd, ratio_factor, CL, current_inclination, previous_inclination):
+       
+        if previous_tvd is not None and ratio_factor is not None and CL is not None:
+            return round(
+                float(previous_tvd) + (float(ratio_factor) * float(CL) / 2 * (
+                    math.cos(math.radians(current_inclination)) +
+                    math.cos(math.radians(previous_inclination))
+                )), 3)
+        return None
+
+    def format_result(self, new_depth, inclination, azimuth, dog_leg, CL, ratio_factor, tvd,latitude, departure):
+        return {
+            "new_depth": new_depth,
+            "inclination": inclination,
+            "azimuth": azimuth,
+            "dog_leg": round(dog_leg, 2),
+            "CL": round(CL, 2),
+            "ratio_factor": round(ratio_factor, 2),
+            "tvd": tvd,
+            "latitude": latitude,
+            "departure": departure
+        }
+
 class SoeViewSet(APIView):
      def get(self, request, job_number=None):
         if job_number is not None:
@@ -998,6 +1327,7 @@ class SoeViewSet(APIView):
             "error": "job_number must be provided."
         }, status=status.HTTP_400_BAD_REQUEST)
      
+
 
 class SoeViewSet(APIView):
     def get(self, request, job_number=None):

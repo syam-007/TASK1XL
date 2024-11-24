@@ -390,8 +390,41 @@ class SurveyCalculationDetails(models.Model):
         db_table = 'task_survey_calculation_details'
 
 
-class InterpolationData(models.Model):
-    depth  = models.DecimalField(max_digits=6,decimal_places=2)
+class InterPolationDataHeader(models.Model):
+    PROPOSAL_DIRECTION_CHOICES = [
+        ('initial', 'Initial Value'),
+        ('bottom_hole_closure', 'Bottom Hole Closure'),
+        ('manual', 'Manual Input'),
+    ]
+
+    resolution = models.DecimalField(max_digits=6, decimal_places=2)
+    proposal_direction = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    proposal_direction_type = models.CharField(
+        max_length=20,
+        choices=PROPOSAL_DIRECTION_CHOICES,
+        default='initial',  
+    )
+    full_survey = models.IntegerField(null=True)
+    range_from = models.IntegerField(null=True)
+    range_to = models.IntegerField(null=True)
+    job_number = models.ForeignKey(CreateJob, on_delete=models.CASCADE, db_column='job_number')
+    run_number = models.SmallIntegerField()
+    date = models.DateTimeField(auto_now=True)
+    status = models.SmallIntegerField(default=0)
+
+    class Meta:
+        db_table = 'task_survey_interpolation_header'
+
+class InterPolationDataDeatils(models.Model):
+    depth = models.DecimalField(max_digits=6,decimal_places=2)
     inclination = models.DecimalField(max_digits=3,decimal_places=2)
     azimuth = models.DecimalField(max_digits=6,decimal_places=2)
-    range = models.IntegerField()
+    inp_header_id = models.ForeignKey(InterPolationDataHeader,on_delete=models.CASCADE)
+
+    class Meta:
+        db_table = 'task_survey_interpolation_details'
+    
+
+   
+
+    

@@ -3,7 +3,8 @@ from .models import (JobInfo,CustomerMaster,UnitofMeasureMaster,
                      ServiceType,RigMaster,WelltypeMaster,ToolMaster,HoleSection,
                      SurveyTypes,CreateJob,EmployeeMaster,SurveyInitialDataDetail,WellInfo,SurveyCalculationHeader,SurveyCalculationDetails,SurveyInfo, 
                      TieOnInformation,AssetMasterDetails,AssetMasterHeader, GyrodataMaster,VehiclesDataMaster,
-                     JobAssetMaster,SequenceOfEventsMaster,SoeMaster
+                     JobAssetMaster,SequenceOfEventsMaster,SoeMaster,InterPolationDataHeader,
+                     InterPolationDataDeatils
                      )
 
 
@@ -252,4 +253,12 @@ class SurveyCalculationDetailSerializer(serializers.ModelSerializer):
         model = SurveyCalculationDetails
         fields='__all__'
 
+class InterPolationDataHeaderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterPolationDataHeader
+        fields = '__all__'
 
+class InterPolationDataDeatilsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterPolationDataDeatils
+        fields = "__all__"

@@ -16,12 +16,14 @@ router.register('asset-master',views.GetAssetHeaderView)
 router.register('gyro-data',views.GyroDataviewSet)
 router.register('vehicle-data',views.VehicleViewSet),
 router.register('asset',views.GetAssetMaster)
+# router.register('interpolation',views.InterPolationDataHeaderViewSet)
 
 
 
 
 urlpatterns = [
     path('',include(router.urls)),
+    
     path('master-data/',views.MasterDataView.as_view()),
 
     path('job-data/<str:job_number>/',views.JobDetailsView.as_view()),
@@ -50,11 +52,13 @@ urlpatterns = [
 
     path('get-jobassets/<str:job_number>/',views.UpdateAsset.as_view()),
 
-    path('soe/<str:job_number>/',views.SoeViewSet.as_view())
+    path('soe/<str:job_number>/',views.SoeViewSet.as_view()),
+
+    path('interpolation/<str:job_number>/<int:run_number>/',views.InterPolationDataHeaderViewSet.as_view()),
+    path('interpolation-details/<str:job_number>/<int:run_number>/<int:resolution>/',views.InterPolationDataDeatilsViewSet.as_view())
     
-   
-    
-    
+  
 ]
+
 
  # path('my-jobs/',views.EmployeeJobListAPIView.as_view())
