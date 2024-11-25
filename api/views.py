@@ -1040,8 +1040,6 @@ class InterPolationDataDeatilsViewSet(APIView):
         except InterPolationDataHeader.DoesNotExist:
             return Response({'error': 'Invalid job_number or run_number.'}, status=status.HTTP_400_BAD_REQUEST)
 
-
-
     def post(self, request, job_number, run_number, resolution):
         try:
             # Fetch required data from the database
@@ -1066,6 +1064,7 @@ class InterPolationDataDeatilsViewSet(APIView):
         previous_inclination = self.get_initial_inclination(job_number, run_number)
         previous_latitude = self.get_initial_latitude(job_number,run_number)
         previous_azimuth = self.get_initial_azimuth(job_number, run_number)
+        previous_departure = self.get_initial_departure(job_number,run_number)
         
     
         # Check if previous_tvd and previous_inclination are available
@@ -1092,22 +1091,34 @@ class InterPolationDataDeatilsViewSet(APIView):
        
         ratio_factor = self.calculate_ratio_factor(dog_leg)
         current_tvd = self.calculate_tvd(previous_tvd, ratio_factor, CL, interpolated_inclination, upper_inclination)
+
         current_latitude = self.calculate_northing(
         previous_latitude, ratio_factor, CL,
         interpolated_inclination, interpolated_azimuth,
         previous_inclination, previous_azimuth)
+
+        current_departure = self.calculate_departure(
+        previous_departure, ratio_factor, CL,
+        interpolated_inclination, interpolated_azimuth,
+        previous_inclination, previous_azimuth)
+
+        proposal_direction = float(header.proposal_direction)  # assuming proposal_direction is stored here
+        vertical_section = round(current_latitude * math.cos(math.radians(proposal_direction - current_departure)), 2)
+        
+
+       
    
         # Update the previous values for the next iteration
         previous_tvd = current_tvd
         previous_inclination = interpolated_inclination
         previous_azimuth = interpolated_azimuth
         previous_latitude = current_latitude
-        previous_departure = self.get_initial_departure(job_number, run_number)
+        previous_departure = current_departure
         
 
         results.append(self.format_result(
             range_from, interpolated_inclination, interpolated_azimuth,
-             dog_leg, CL, ratio_factor, current_tvd,current_latitude,previous_departure
+             dog_leg, CL, ratio_factor, current_tvd,current_latitude,previous_departure,vertical_section
         ))
 
         upper_depth, upper_inclination, upper_azimuth = range_from, interpolated_inclination, interpolated_azimuth
@@ -1145,12 +1156,15 @@ class InterPolationDataDeatilsViewSet(APIView):
                     interpolated_inclination, interpolated_azimuth,
                     previous_inclination, previous_azimuth
                 )
+                vertical_section = round(current_latitude * math.cos(math.radians(proposal_direction - current_departure)), 2)
                
                 # Append the result to the list
                 results.append(self.format_result(
                     new_depth, interpolated_inclination, interpolated_azimuth,
-                     dog_leg, CL, ratio_factor, current_tvd,current_latitude,current_departure
+                     dog_leg, CL, ratio_factor, current_tvd,current_latitude,current_departure, vertical_section
                 ))
+
+              
 
                 # Update the upper values for the next loop
                 upper_depth = new_depth
@@ -1164,22 +1178,23 @@ class InterPolationDataDeatilsViewSet(APIView):
 
 
     def calculate_northing(self, previous_latitude, ratio_factor, CL, current_inclination, current_azimuth, previous_inclination, previous_azimuth):
-        
+       
         if previous_latitude is not None and ratio_factor is not None and CL is not None:
-            latitude = round(float(previous_latitude) + (
+            latitude = float(previous_latitude) + (
                             float(ratio_factor) * float(CL) / 2 *
                             ((math.sin(math.radians(float(current_inclination))) * math.cos(math.radians(float(current_azimuth)))) +
-                            (math.sin(math.radians(float(previous_inclination))) * math.cos(math.radians(float(previous_azimuth)))))), 2)
+                            (math.sin(math.radians(float(previous_inclination))) * math.cos(math.radians(float(previous_azimuth))))))
             return latitude
         return None
     def calculate_departure(self, previous_departure, ratio_factor, CL, current_inclination, current_azimuth, previous_inclination, previous_azimuth):
+       
         if previous_departure is not None and ratio_factor is not None and CL is not None:
             departure = previous_departure + (
                 ratio_factor * CL / 2 *
                 ((math.sin(math.radians(current_inclination)) * math.sin(math.radians(current_azimuth))) +
                 (math.sin(math.radians(previous_inclination)) * math.sin(math.radians(previous_azimuth))))
             )
-            return round(departure, 3)
+            return departure
         return None
     def get_initial_departure(self, job_number, run_number):
         try:
@@ -1209,7 +1224,6 @@ class InterPolationDataDeatilsViewSet(APIView):
         except SurveyCalculationHeader.DoesNotExist:
             return None
     def get_initial_tvd(self, job_number, run_number):
-    # Fetch the initial TVD directly from SurveyCalculationHeader
         try:
             survey_header = SurveyCalculationHeader.objects.get(
                 job_number=job_number,
@@ -1273,7 +1287,7 @@ class InterPolationDataDeatilsViewSet(APIView):
             return math.degrees(dog_leg_radians)
         except ValueError:
             return 0.0
-
+    
     def calculate_ratio_factor(self, dog_leg):
         if dog_leg < 0.25:
             return 1
@@ -1288,8 +1302,30 @@ class InterPolationDataDeatilsViewSet(APIView):
                     math.cos(math.radians(previous_inclination))
                 )), 3)
         return None
-
-    def format_result(self, new_depth, inclination, azimuth, dog_leg, CL, ratio_factor, tvd,latitude, departure):
+    def calculate_closure_direction(self,current_northing, current_departure):
+        if current_northing == 0:
+            return 0.0
+        try:
+            # Match Excel precision by rounding intermediate division
+            ratio = round(current_departure / current_northing, 15)
+            print(ratio)
+            atan_value = math.atan(ratio)  # Similar to Excel's ATAN(I14/H14)
+            atan_degrees = round(math.degrees(atan_value), 15)  # Convert radians to degrees
+            
+            if current_northing < 0:  # Corresponds to H14 < 0 in Excel
+                closure_direction = 180 + atan_degrees
+            elif current_northing > 0 and current_departure > 0:  # H14 > 0 AND I14 > 0
+                closure_direction = atan_degrees
+            else:  # All other cases, equivalent to 360 + ATAN(I14/H14) in Excel
+                closure_direction = 360 + atan_degrees
+            
+            return closure_direction
+        except ZeroDivisionError:
+            return None
+    def format_result(self, new_depth, inclination, azimuth, dog_leg, CL, ratio_factor, tvd,latitude, departure, vertical_section):
+        closure_distance = round((latitude**2 + departure**2)**0.5, 2)
+        closure_direction = self.calculate_closure_direction(latitude, departure)
+        dls = round((dog_leg * 30) / CL, 2) if CL != 0 else 0
         return {
             "new_depth": new_depth,
             "inclination": inclination,
@@ -1297,9 +1333,13 @@ class InterPolationDataDeatilsViewSet(APIView):
             "dog_leg": round(dog_leg, 2),
             "CL": round(CL, 2),
             "ratio_factor": round(ratio_factor, 2),
-            "tvd": tvd,
-            "latitude": latitude,
-            "departure": departure
+            "tvd": round(tvd,2),
+            "latitude": round(latitude,2),
+            "departure": round(departure,2),
+            "closure distance": round(closure_distance,2),
+            "closure_direction": round(closure_direction,2),
+             "DLS": round(dls,2),
+             "vertical_section": round(vertical_section,2)
         }
 
 class SoeViewSet(APIView):
