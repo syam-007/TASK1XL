@@ -391,20 +391,7 @@ class SurveyCalculationDetails(models.Model):
 
 
 class InterPolationDataHeader(models.Model):
-    PROPOSAL_DIRECTION_CHOICES = [
-        ('initial', 'Initial Value'),
-        ('bottom_hole_closure', 'Bottom Hole Closure'),
-        ('manual', 'Manual Input'),
-    ]
-
     resolution = models.DecimalField(max_digits=6, decimal_places=2)
-    proposal_direction = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
-    proposal_direction_type = models.CharField(
-        max_length=20,
-        choices=PROPOSAL_DIRECTION_CHOICES,
-        default='initial',  
-    )
-    full_survey = models.IntegerField(null=True)
     range_from = models.IntegerField(null=True)
     range_to = models.IntegerField(null=True)
     job_number = models.ForeignKey(CreateJob, on_delete=models.CASCADE, db_column='job_number')
@@ -416,14 +403,30 @@ class InterPolationDataHeader(models.Model):
         db_table = 'task_survey_interpolation_header'
 
 class InterPolationDataDeatils(models.Model):
-    depth = models.DecimalField(max_digits=6,decimal_places=2)
-    inclination = models.DecimalField(max_digits=3,decimal_places=2)
-    azimuth = models.DecimalField(max_digits=6,decimal_places=2)
-    inp_header_id = models.ForeignKey(InterPolationDataHeader,on_delete=models.CASCADE)
+    header_id = models.ForeignKey(InterPolationDataHeader,on_delete=models.PROTECT,db_column='header_id')
+    resolution = models.FloatField()
+    new_depth = models.FloatField()
+    inclination = models.FloatField()
+    azimuth = models.FloatField()
+    dog_leg = models.FloatField()
+    CL = models.FloatField()  # Closure Length
+    ratio_factor = models.FloatField()
+    tvd = models.FloatField()  # True Vertical Depth
+    latitude = models.FloatField()
+    departure = models.FloatField()
+    closure_distance = models.FloatField()
+    closure_direction = models.FloatField()
+    DLS = models.FloatField()  # Dog Leg Severity
+    vertical_section = models.FloatField()
+    survey_status = models.IntegerField()
 
+    def __str__(self):
+        return f"TaskSurveyInterpolationDetails({self.job_number}, {self.run_number}, {self.new_depth})"
+    
     class Meta:
         db_table = 'task_survey_interpolation_details'
     
+
 
    
 

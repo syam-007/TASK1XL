@@ -256,7 +256,12 @@ class SurveyCalculationDetailSerializer(serializers.ModelSerializer):
 class InterPolationDataHeaderSerializer(serializers.ModelSerializer):
     class Meta:
         model = InterPolationDataHeader
-        fields = '__all__'
+        fields = ['id','resolution', 'range_from', 'range_to', 'job_number', 'run_number', 'status']
+    def validate(self, data):
+        # Custom validation logic if needed
+        if data.get('range_from') and data.get('range_to') and data['range_from'] > data['range_to']:
+            raise serializers.ValidationError("'range_from' cannot be greater than 'range_to'.")
+        return data
 
 class InterPolationDataDeatilsSerializer(serializers.ModelSerializer):
     class Meta:

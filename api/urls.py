@@ -55,7 +55,10 @@ urlpatterns = [
     path('soe/<str:job_number>/',views.SoeViewSet.as_view()),
 
     path('interpolation/<str:job_number>/<int:run_number>/',views.InterPolationDataHeaderViewSet.as_view()),
-    path('interpolation-details/<str:job_number>/<int:run_number>/<int:resolution>/',views.InterPolationDataDeatilsViewSet.as_view())
+
+    path('interpolation-details/<str:job_number>/<int:run_number>/<int:resolution>/<int:header_id>/',views.InterPolationDataDeatilsViewSet.as_view()),
+    
+    path('save-calculation/', views.SaveCalculationViewSet.as_view(), name='save-calculation')
     
   
 ]

@@ -990,47 +990,70 @@ class InterPolationDataHeaderViewSet(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     
-    def post(self, request, job_number=None, run_number=None):
-       
-        try:
-            survey_info = SurveyInfo.objects.get(job_number=job_number, run_number=run_number)
-        except SurveyInfo.DoesNotExist:
-            return Response({'error': 'Job number or run number does not exist in SurveyInfo.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-       
-        proposal_direction_type = request.data.get('proposal_direction_type')
+    def post(self, request, job_number, run_number, *args, **kwargs):
+        # Extract parameters from the request body
+        data = request.data
+        resolution = data.get('resolution')
+        range_from = data.get('range_from')
+        range_to = data.get('range_to')
 
-        if proposal_direction_type == 'initial':
-            proposal_direction = survey_info.proposal_direction 
-        elif proposal_direction_type == 'bottom_hole_closure':
-            
-            proposal_direction = Decimal('0')
-        elif proposal_direction_type == 'manual':
-            
-            proposal_direction = request.data.get('proposal_direction')
-            if proposal_direction is None:
-                return Response({'error': 'Manual proposal direction is required.'}, status=status.HTTP_400_BAD_REQUEST)
-            try:
-                proposal_direction = Decimal(proposal_direction)
-            except (ValueError, TypeError):
-                return Response({'error': 'Proposal direction must be a valid decimal number.'}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response({'error': 'Invalid proposal_direction_type.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Validate required fields
+        if not resolution:
+            return Response({
+                "message": "Missing required field: 'resolution'."
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = InterPolationDataHeaderSerializer(data=request.data)
+        # Check that both range_from and range_to are either null or have values
+        if (range_from is None and range_to is not None) or (range_from is not None and range_to is None):
+            return Response({
+                "message": "'range_from' and 'range_to' must both be provided or both be null."
+            }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Validate range values if not null
+        if range_from is not None and range_to is not None:
+            if int(range_from) > int(range_to):
+                return Response({
+                    "message": "'range_from' cannot be greater than 'range_to'."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check for duplicate records
+        existing_record = InterPolationDataHeader.objects.filter(
+            job_number=job_number,
+            run_number=run_number,
+            resolution=resolution,
+            range_from=range_from,
+            range_to=range_to
+        ).first()
+
+        if existing_record:
+            return Response({
+                "message": "A record with the same resolution and range already exists."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Prepare the data to be saved
+        interpolation_data = {
+            "header_id":id,
+            "resolution": resolution,
+            "range_from": range_from,
+            "range_to": range_to,
+            "job_number": job_number,
+            "run_number": run_number,
+        }
+
+        # Serialize and save the data
+        serializer = InterPolationDataHeaderSerializer(data=interpolation_data)
         if serializer.is_valid():
-            serializer.save(
-                job_number=survey_info.job_number, 
-                run_number=run_number, 
-                proposal_direction=proposal_direction, 
-                status=0
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            serializer.save()
+            return Response({
+                "message": "Data saved successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
 
-
+        # Handle validation errors
+        return Response({
+            "message": "Validation failed.",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 class InterPolationDataDeatilsViewSet(APIView):
     
@@ -1040,11 +1063,12 @@ class InterPolationDataDeatilsViewSet(APIView):
         except InterPolationDataHeader.DoesNotExist:
             return Response({'error': 'Invalid job_number or run_number.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    def post(self, request, job_number, run_number, resolution):
+    def post(self,request, job_number, run_number, resolution,header_id):
         try:
             # Fetch required data from the database
-            header = InterPolationDataHeader.objects.get(job_number=job_number, run_number=run_number)
+            header = InterPolationDataHeader.objects.get(job_number=job_number, run_number=run_number,id = header_id)
             tie_on_info = TieOnInformation.objects.get(job_number=job_number, run_number=run_number)
+            survey_info = SurveyInfo.objects.get(job_number=job_number, run_number=run_number)
         except (InterPolationDataHeader.DoesNotExist, TieOnInformation.DoesNotExist):
             return Response({'error': 'Invalid job_number or run_number.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1058,6 +1082,29 @@ class InterPolationDataDeatilsViewSet(APIView):
         resolution_value = float(resolution)
         range_from = header.range_from or float(tie_on_info.measured_depth)
         range_to = header.range_to or float(survey_data_rows[-1].depth)
+        if header.range_from is None or header.range_to is None:
+            range_from = float(tie_on_info.measured_depth)
+            range_to = float(survey_data_rows[-1].depth)
+        else:
+            range_from = float(header.range_from)
+            range_to = float(header.range_to)
+
+        header_data = {
+        "Measured_Depth": float(tie_on_info.measured_depth),
+        "Inclination": float(tie_on_info.inclination),
+        "Azimuth": float(tie_on_info.azimuth),
+        "TVD":float(tie_on_info.true_vertical_depth),
+        "latitude": float(tie_on_info.latitude),
+        "departure": float(tie_on_info.departure),
+        "Proposal_Direction":float(survey_info.proposal_direction),
+        "From":range_from,
+        "To":range_to,
+        "Course_Length":resolution,
+        "Maximum Inclination":None,
+        "Closure Distance": None,
+        "Closure Direction": None,
+        "Vertical Section": None
+        }
 
         # Fetch the initial TVD and inclination from the SurveyCalculationDetails
         previous_tvd = self.get_initial_tvd(job_number, run_number)
@@ -1070,10 +1117,14 @@ class InterPolationDataDeatilsViewSet(APIView):
         # Check if previous_tvd and previous_inclination are available
         if previous_tvd is None or previous_inclination is None:
             return Response({'error': 'Initial TVD or inclination not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        max_inclination = 0.0
 
         # Interpolation logic
         upper_depth, upper_inclination, upper_azimuth = self.get_previous_survey_data(job_number, run_number, range_from, tie_on_info)
         lower_depth, lower_inclination, lower_azimuth = self.get_next_survey_data(survey_data_rows, range_from, range_to)
+        
+        max_inclination = max(max_inclination, upper_inclination, lower_inclination)
 
         interpolated_inclination, interpolated_azimuth = self.interpolate(
             upper_depth, upper_inclination, upper_azimuth,
@@ -1102,12 +1153,9 @@ class InterPolationDataDeatilsViewSet(APIView):
         interpolated_inclination, interpolated_azimuth,
         previous_inclination, previous_azimuth)
 
-        proposal_direction = float(header.proposal_direction)  # assuming proposal_direction is stored here
+        proposal_direction = float(survey_info.proposal_direction)  # assuming proposal_direction is stored here
         vertical_section = round(current_latitude * math.cos(math.radians(proposal_direction - current_departure)), 2)
         
-
-       
-   
         # Update the previous values for the next iteration
         previous_tvd = current_tvd
         previous_inclination = interpolated_inclination
@@ -1125,6 +1173,7 @@ class InterPolationDataDeatilsViewSet(APIView):
 
         # Loop through survey data rows
         for survey_data in survey_data_rows:
+           
             lower_depth = float(survey_data.depth)
             if lower_depth < range_from or lower_depth > range_to:
                 continue
@@ -1137,6 +1186,7 @@ class InterPolationDataDeatilsViewSet(APIView):
                     upper_depth, upper_inclination, upper_azimuth,
                     lower_depth, float(survey_data.Inc), float(survey_data.AzG), new_depth
                 )
+                max_inclination = max(max_inclination, interpolated_inclination)
                 dog_leg = self.calculate_dog_leg(upper_inclination, upper_azimuth,
                                                  interpolated_inclination, interpolated_azimuth)
 
@@ -1157,14 +1207,11 @@ class InterPolationDataDeatilsViewSet(APIView):
                     previous_inclination, previous_azimuth
                 )
                 vertical_section = round(current_latitude * math.cos(math.radians(proposal_direction - current_departure)), 2)
-               
                 # Append the result to the list
                 results.append(self.format_result(
                     new_depth, interpolated_inclination, interpolated_azimuth,
                      dog_leg, CL, ratio_factor, current_tvd,current_latitude,current_departure, vertical_section
                 ))
-
-              
 
                 # Update the upper values for the next loop
                 upper_depth = new_depth
@@ -1174,9 +1221,15 @@ class InterPolationDataDeatilsViewSet(APIView):
                 previous_latitude = current_latitude
                 previous_departure = current_departure
 
-        return Response({"results": results}, status=status.HTTP_200_OK)
+        if results:
+            last_result = results[-1]
+            header_data["Maximum Inclination"] = round(max_inclination, 2)
+            header_data["Closure Distance"] = last_result["closure_distance"]
+            header_data["Closure Direction"] = last_result["closure_direction"]
+            header_data["Vertical Section"] = last_result["vertical_section"]
 
-
+        return Response({"header": header_data, "results": results}, status=status.HTTP_200_OK)
+               
     def calculate_northing(self, previous_latitude, ratio_factor, CL, current_inclination, current_azimuth, previous_inclination, previous_azimuth):
        
         if previous_latitude is not None and ratio_factor is not None and CL is not None:
@@ -1308,7 +1361,7 @@ class InterPolationDataDeatilsViewSet(APIView):
         try:
             # Match Excel precision by rounding intermediate division
             ratio = round(current_departure / current_northing, 15)
-            print(ratio)
+           
             atan_value = math.atan(ratio)  # Similar to Excel's ATAN(I14/H14)
             atan_degrees = round(math.degrees(atan_value), 15)  # Convert radians to degrees
             
@@ -1326,6 +1379,7 @@ class InterPolationDataDeatilsViewSet(APIView):
         closure_distance = round((latitude**2 + departure**2)**0.5, 2)
         closure_direction = self.calculate_closure_direction(latitude, departure)
         dls = round((dog_leg * 30) / CL, 2) if CL != 0 else 0
+       
         return {
             "new_depth": new_depth,
             "inclination": inclination,
@@ -1336,12 +1390,45 @@ class InterPolationDataDeatilsViewSet(APIView):
             "tvd": round(tvd,2),
             "latitude": round(latitude,2),
             "departure": round(departure,2),
-            "closure distance": round(closure_distance,2),
+            "closure_distance": round(closure_distance,2),
             "closure_direction": round(closure_direction,2),
-             "DLS": round(dls,2),
-             "vertical_section": round(vertical_section,2)
+            "DLS": round(dls,2),
+            "vertical_section": round(vertical_section,2)
         }
+    
+       
+class SaveCalculationViewSet(APIView):
+     def post(self, request):
+        try:
+            # Extract required data from the request
+            resolution_data = request.data.get('resolution_data', [])
+            job_number = request.data.get('job_number')
+            run_number = request.data.get('run_number')
 
+            if not resolution_data or not job_number or not run_number:
+                return Response({'error': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Save each resolution data entry to the database
+            for data in resolution_data:
+                InterPolationDataDeatils.objects.create(
+                    job_number=job_number,
+                    run_number=run_number,
+                    depth=data['new_depth'],
+                    inclination=data['inclination'],
+                    azimuth=data['azimuth'],
+                    dog_leg=data['dog_leg'],
+                    tvd=data['tvd'],
+                    latitude=data['latitude'],
+                    departure=data['departure'],
+                    closure_distance=data['closure_distance'],
+                    closure_direction=data['closure_direction'],
+                    vertical_section=data['vertical_section']
+                )
+
+            return Response({'message': 'Resolution data saved successfully.'}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class SoeViewSet(APIView):
      def get(self, request, job_number=None):
         if job_number is not None:
