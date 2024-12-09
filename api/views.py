@@ -31,6 +31,8 @@ from django.db import models
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal, ROUND_HALF_UP
+from rest_framework.parsers import MultiPartParser, FormParser
+import numpy as np
 
 
 
@@ -373,6 +375,9 @@ class UploadExcelView(APIView):
      else:
         return Response({"error": "job_number and run_number are required"}, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+
     def post(self, request, *args, **kwargs):
         file = request.FILES.get('file')
         job_number = kwargs.get('job_number')
@@ -484,6 +489,7 @@ class UploadExcelView(APIView):
                     w_t_status=w_t_status,
                     status=overall_status,
                     run_number = run_number,
+                    survey_type_status = survey_type_id
                 )
                 results.append({
                     "row": index + 2,
@@ -1032,7 +1038,6 @@ class InterPolationDataHeaderViewSet(APIView):
 
         # Prepare the data to be saved
         interpolation_data = {
-            "header_id":id,
             "resolution": resolution,
             "range_from": range_from,
             "range_to": range_to,
@@ -1066,12 +1071,12 @@ class InterPolationDataDeatilsViewSet(APIView):
     def post(self,request, job_number, run_number, resolution,header_id):
         try:
             # Fetch required data from the database
-            header = InterPolationDataHeader.objects.get(job_number=job_number, run_number=run_number,id = header_id)
+            header = InterPolationDataHeader.objects.get(job_number=job_number, run_number=run_number,id = header_id,resolution=resolution)
             tie_on_info = TieOnInformation.objects.get(job_number=job_number, run_number=run_number)
             survey_info = SurveyInfo.objects.get(job_number=job_number, run_number=run_number)
         except (InterPolationDataHeader.DoesNotExist, TieOnInformation.DoesNotExist):
             return Response({'error': 'Invalid job_number or run_number.'}, status=status.HTTP_400_BAD_REQUEST)
-
+       
         # Fetch survey data
         survey_data_rows = list(SurveyInitialDataDetail.objects.filter(
             job_number=job_number, run_number=run_number).order_by('depth'))
@@ -1223,11 +1228,11 @@ class InterPolationDataDeatilsViewSet(APIView):
 
         if results:
             last_result = results[-1]
-            header_data["Maximum Inclination"] = round(max_inclination, 2)
-            header_data["Closure Distance"] = last_result["closure_distance"]
-            header_data["Closure Direction"] = last_result["closure_direction"]
-            header_data["Vertical Section"] = last_result["vertical_section"]
-
+            header_data["Maximum_Inclination"] = round(max_inclination, 2)
+            header_data["Closure_Distance"] = last_result["closure_distance"]
+            header_data["Closure_Direction"] = last_result["closure_direction"]
+            header_data["Vertical_Section"] = last_result["vertical_section"]
+       
         return Response({"header": header_data, "results": results}, status=status.HTTP_200_OK)
                
     def calculate_northing(self, previous_latitude, ratio_factor, CL, current_inclination, current_azimuth, previous_inclination, previous_azimuth):
@@ -1381,7 +1386,7 @@ class InterPolationDataDeatilsViewSet(APIView):
         dls = round((dog_leg * 30) / CL, 2) if CL != 0 else 0
        
         return {
-            "new_depth": new_depth,
+            "measured_depth": new_depth,
             "inclination": inclination,
             "azimuth": azimuth,
             "dog_leg": round(dog_leg, 2),
@@ -1396,122 +1401,300 @@ class InterPolationDataDeatilsViewSet(APIView):
             "vertical_section": round(vertical_section,2)
         }
     
-       
-class SaveCalculationViewSet(APIView):
-     def post(self, request):
+
+
+class ComparisonViewSet(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+    REQUIRED_COLUMNS = {"depth", "Inc", "Azg"}
+    INTERPOLATION_RESOLUTION = 5  # Resolution for interpolation
+
+    def post(self, request, *args, **kwargs):
+        # Fetch the uploaded files
+        file1 = request.FILES.get('file1')
+        file2 = request.FILES.get('file2')
+        
+        if not file1 or not file2:
+            return Response({"error": "Both file1 and file2 are required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not file1.name.endswith(('.xls', '.xlsx')) or not file2.name.endswith(('.xls', '.xlsx')):
+            return Response({"error": "Both files must be Excel files."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Retrieve additional interpolation parameters from the request
+        initial_depth = float(request.data.get("initial_depth", 0))  # Default to 0 if not provided
+        initial_inclination = float(request.data.get("initial_inclination", 0))
+        initial_azimuth = float(request.data.get("azi", 0))
+
         try:
-            # Extract required data from the request
-            resolution_data = request.data.get('resolution_data', [])
-            job_number = request.data.get('job_number')
-            run_number = request.data.get('run_number')
+            # Read both Excel files into DataFrames
+            df1 = pd.read_excel(file1)
+            df2 = pd.read_excel(file2)
 
-            if not resolution_data or not job_number or not run_number:
-                return Response({'error': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
+            # Check for required columns in both files
+            missing_columns_file1 = self.REQUIRED_COLUMNS - set(df1.columns)
+            missing_columns_file2 = self.REQUIRED_COLUMNS - set(df2.columns)
 
-            # Save each resolution data entry to the database
-            for data in resolution_data:
-                InterPolationDataDeatils.objects.create(
-                    job_number=job_number,
-                    run_number=run_number,
-                    depth=data['new_depth'],
-                    inclination=data['inclination'],
-                    azimuth=data['azimuth'],
-                    dog_leg=data['dog_leg'],
-                    tvd=data['tvd'],
-                    latitude=data['latitude'],
-                    departure=data['departure'],
-                    closure_distance=data['closure_distance'],
-                    closure_direction=data['closure_direction'],
-                    vertical_section=data['vertical_section']
-                )
-
-            return Response({'message': 'Resolution data saved successfully.'}, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-class SoeViewSet(APIView):
-     def get(self, request, job_number=None):
-        if job_number is not None:
-            try:
-                job = CreateJob.objects.get(job_number = job_number)
-                events = SequenceOfEventsMaster.objects.filter(job_number=job)
-                if not events.exists():
-                    return Response({
-                        "message": f"No events found for job_number {job_number}."
-                    }, status=status.HTTP_404_NOT_FOUND)
-                serializer = SequenceOfEventsSerializer(events, many=True)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-
-            except CreateJob.DoesNotExist:
+            if missing_columns_file1:
                 return Response({
-                    "error": f"No job found with job_number {job_number}."
-                }, status=status.HTTP_404_NOT_FOUND)
+                    "error": "File1 is missing required columns.",
+                    "missing_columns_file1": list(missing_columns_file1)
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-            except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            if missing_columns_file2:
+                return Response({
+                    "error": "File2 is missing required columns.",
+                    "missing_columns_file2": list(missing_columns_file2)
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({
-            "error": "job_number must be provided."
-        }, status=status.HTTP_400_BAD_REQUEST)
+            # Perform interpolation on both files
+            df1_interpolated = self.interpolate_data(df1, initial_depth, initial_inclination, initial_azimuth)
+            df2_interpolated = self.interpolate_data(df2, initial_depth, initial_inclination, initial_azimuth)
+
+            # Prepare file interpolated data
+            file1_data = [
+                {
+                    "depth": row["depth"],
+                    "inclination": row["Inc"],
+                    "azimuth": row["Azg"],
+                    "CL": row["CL"],
+                    "dog_leg": row["dog_leg"]
+                } for _, row in df1_interpolated.iterrows()
+            ]
+
+            file2_data = [
+                {
+                    "depth": row["depth"],
+                    "inclination": row["Inc"],
+                    "azimuth": row["Azg"],
+                    "CL": row["CL"],
+                    "dog_leg": row["dog_leg"]
+                } for _, row in df2_interpolated.iterrows()
+            ]
+
+            # Perform comparison of interpolated data
+            comparison_result = self.compare_interpolated_data(df1_interpolated, df2_interpolated)
+
+            # Return the structured response
+            return Response({
+                "status": "success",
+                "file1_interpolated": file1_data,
+                "file2_interpolated": file2_data,
+                "comparison_result": comparison_result
+            })
+        
+        except Exception as e:
+            return Response({"error": f"Error processing files: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def dog_leg(self, INC1, INC2, AZI1, AZI2):
+        """Calculate the dogleg angle between two points based on the formula."""
+        # Convert degrees to radians
+        I1 = math.radians(INC1)
+        I2 = math.radians(INC2)
+        A1 = math.radians(AZI1)
+        A2 = math.radians(AZI2)
+
+        # Dogleg formula using spherical trigonometry
+        cos_term = math.cos(I1) * math.cos(I2) + (math.sin(I1) * math.sin(I2) * (math.cos(A2 - A1) - 1))
+
+        # Ensure the cosine term is within the valid range for ACOS to avoid NaN errors
+        cos_term = min(1, max(cos_term, -1))
+
+        # Dogleg in radians, then convert to degrees
+        DL = math.acos(cos_term)
+        return math.degrees(DL)
+
+    def interpolate_data(self, df, initial_depth, initial_inclination, initial_azimuth):
+        """Interpolates data in a DataFrame and calculates dog_leg using the provided equation."""
+        df = df.sort_values(by="depth").reset_index(drop=True)
+
+        # Initialize variables for iteration
+        MD1 = initial_depth
+        INC1 = initial_inclination
+        AZI1 = initial_azimuth
+        previous_depth = None  # For calculating CL
+
+        interpolated_data = {"depth": [], "Inc": [], "Azg": [], "CL": [], "dog_leg": []}
+
+        # Iterate through the depth values in the dataframe
+        for i in range(len(df)):
+            MD2 = df["depth"].iloc[i]
+            INC2 = df["Inc"].iloc[i]
+            AZI2 = df["Azg"].iloc[i]
+
+            while MD1 < MD2:
+                # For the very first depth, the dog_leg should be zero.
+                if MD1 == initial_depth:
+                    DL = 0
+                else:
+                    # Calculate Dogleg (DL) only after the first depth
+                    DL = self.dog_leg(INC1, INC2, AZI1, AZI2)
+                    DL0 = DL * ((MD1 - initial_depth) / (MD2 - initial_depth))
+
+                # Calculate interpolated inclination
+                INC0 = INC1 + (INC2 - INC1) * (DL0 / DL if DL != 0 else 1)  # Adjust if DL is 0
+
+                # Calculate interpolated azimuth using Interpolated_Azimuth logic
+                if (AZI2 - AZI1) > 180:
+                    AZI0 = AZI1 + ((AZI2 - AZI1 - 360) * DL0 / DL if DL != 0 else 1)
+                    if AZI0 < 0:
+                        AZI0 += 360
+                else:
+                    AZI0 = AZI1 + ((AZI2 - AZI1) * DL0 / DL if DL != 0 else 1)
+
+                # Calculate CL (Cumulative Length)
+                if previous_depth is None:  # First point
+                    CL = 0
+                else:
+                    CL = MD1 - previous_depth
+
+                # Append interpolated values and dog_leg
+                interpolated_data["depth"].append(MD1)
+                interpolated_data["Inc"].append(round(INC0, 2))
+                interpolated_data["Azg"].append(round(AZI0, 2))
+                interpolated_data["CL"].append(CL)
+                interpolated_data["dog_leg"].append(round(DL, 2))  # Store dog_leg for this depth
+
+                # Update MD1 for next interpolation point
+                previous_depth = MD1
+                MD1 += self.INTERPOLATION_RESOLUTION
+
+            # Update variables for next segment
+            initial_depth = MD2
+            INC1, AZI1 = INC2, AZI2
+
+        return pd.DataFrame(interpolated_data)
+
+    def compare_interpolated_data(self, df1, df2):
+        """Compares the interpolated data from two DataFrames."""
+        comparison_result = []
+        for depth in df1["depth"]:
+            if depth in df2["depth"].values:
+                row1 = df1[df1["depth"] == depth]
+                row2 = df2[df2["depth"] == depth]
+                comparison_result.append({
+                    "depth": depth,
+                    "Inc_difference": round(abs(row1["Inc"].values[0] - row2["Inc"].values[0]), 2),
+                    "Azg_difference": round(abs(row1["Azg"].values[0] - row2["Azg"].values[0]), 2),
+                    "CL": abs(row1["CL"].values[0] - row2["CL"].values[0]),
+                    "dog_leg_difference": round(abs(row1["dog_leg"].values[0] - row2["dog_leg"].values[0]), 2)  # Add dog_leg_difference
+                })
+        
+        return comparison_result
+
+# class SaveCalculationViewSet(APIView):
+#      def post(self, request):
+#         try:
+#             # Extract required data from the request
+#             resolution_data = request.data.get('resolution_data', [])
+#             job_number = request.data.get('job_number')
+#             run_number = request.data.get('run_number')
+
+#             if not resolution_data or not job_number or not run_number:
+#                 return Response({'error': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#             # Save each resolution data entry to the database
+#             for data in resolution_data:
+#                 InterPolationDataDeatils.objects.create(
+#                     job_number=job_number,
+#                     run_number=run_number,
+#                     depth=data['new_depth'],
+#                     inclination=data['inclination'],
+#                     azimuth=data['azimuth'],
+#                     dog_leg=data['dog_leg'],
+#                     tvd=data['tvd'],
+#                     latitude=data['latitude'],
+#                     departure=data['departure'],
+#                     closure_distance=data['closure_distance'],
+#                     closure_direction=data['closure_direction'],
+#                     vertical_section=data['vertical_section']
+#                 )
+
+#             return Response({'message': 'Resolution data saved successfully.'}, status=status.HTTP_201_CREATED)
+
+#         except Exception as e:
+#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# # class SoeViewSet(APIView):
+#      def get(self, request, job_number=None):
+#         if job_number is not None:
+#             try:
+#                 job = CreateJob.objects.get(job_number = job_number)
+#                 events = SequenceOfEventsMaster.objects.filter(job_number=job)
+#                 if not events.exists():
+#                     return Response({
+#                         "message": f"No events found for job_number {job_number}."
+#                     }, status=status.HTTP_404_NOT_FOUND)
+#                 serializer = SequenceOfEventsSerializer(events, many=True)
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
+
+#             except CreateJob.DoesNotExist:
+#                 return Response({
+#                     "error": f"No job found with job_number {job_number}."
+#                 }, status=status.HTTP_404_NOT_FOUND)
+
+#             except Exception as e:
+#                 return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#         return Response({
+#             "error": "job_number must be provided."
+#         }, status=status.HTTP_400_BAD_REQUEST)
      
 
 
-class SoeViewSet(APIView):
-    def get(self, request, job_number=None):
-        if job_number is not None:
-            try:
-                job = CreateJob.objects.get(job_number=job_number)
-                events = SequenceOfEventsMaster.objects.filter(job_number=job)
-                if not events.exists():
-                    return Response({
-                        "message": f"No events found for job_number {job_number}."
-                    }, status=status.HTTP_404_NOT_FOUND)
-                serializer = SequenceOfEventsSerializer(events, many=True)
-                return Response(serializer.data, status=status.HTTP_200_OK)
+# class SoeViewSet(APIView):
+#     def get(self, request, job_number=None):
+#         if job_number is not None:
+#             try:
+#                 job = CreateJob.objects.get(job_number=job_number)
+#                 events = SequenceOfEventsMaster.objects.filter(job_number=job)
+#                 if not events.exists():
+#                     return Response({
+#                         "message": f"No events found for job_number {job_number}."
+#                     }, status=status.HTTP_404_NOT_FOUND)
+#                 serializer = SequenceOfEventsSerializer(events, many=True)
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
 
-            except CreateJob.DoesNotExist:
-                return Response({
-                    "error": f"No job found with job_number {job_number}."
-                }, status=status.HTTP_404_NOT_FOUND)
+#             except CreateJob.DoesNotExist:
+#                 return Response({
+#                     "error": f"No job found with job_number {job_number}."
+#                 }, status=status.HTTP_404_NOT_FOUND)
 
-            except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#             except Exception as e:
+#                 return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response({
-            "error": "job_number must be provided."
-        }, status=status.HTTP_400_BAD_REQUEST)
+#         return Response({
+#             "error": "job_number must be provided."
+#         }, status=status.HTTP_400_BAD_REQUEST)
 
-    def post(self, request,job_number=None):
-        job_number = request.data.get('job_number')  
-        action_id = request.data.get('action_id')
-        if job_number is None or action_id is None:
-            return Response({
-                "error": "job_number and action_id must be provided."
-            }, status=status.HTTP_400_BAD_REQUEST)
+#     def post(self, request,job_number=None):
+#         job_number = request.data.get('job_number')  
+#         action_id = request.data.get('action_id')
+#         if job_number is None or action_id is None:
+#             return Response({
+#                 "error": "job_number and action_id must be provided."
+#             }, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
+#         try:
             
-            job = CreateJob.objects.get(job_number=job_number)
-            action = SoeMaster.objects.get(id=action_id)
+#             job = CreateJob.objects.get(job_number=job_number)
+#             action = SoeMaster.objects.get(id=action_id)
           
-            sequence_of_event = SequenceOfEventsMaster.objects.create(
-                job_number=job,
-                soe_desc=action.action 
-            )
+#             sequence_of_event = SequenceOfEventsMaster.objects.create(
+#                 job_number=job,
+#                 soe_desc=action.action 
+#             )
 
            
-            serializer = SequenceOfEventsSerializer(sequence_of_event)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+#             serializer = SequenceOfEventsSerializer(sequence_of_event)
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        except CreateJob.DoesNotExist:
-            return Response({
-                "error": f"No job found with job_number {job_number}."
-            }, status=status.HTTP_404_NOT_FOUND)
+#         except CreateJob.DoesNotExist:
+#             return Response({
+#                 "error": f"No job found with job_number {job_number}."
+#             }, status=status.HTTP_404_NOT_FOUND)
 
-        except SoeMaster.DoesNotExist:
-            return Response({
-                "error": f"No action found with action_id {action_id}."
-            }, status=status.HTTP_404_NOT_FOUND)
+#         except SoeMaster.DoesNotExist:
+#             return Response({
+#                 "error": f"No action found with action_id {action_id}."
+#             }, status=status.HTTP_404_NOT_FOUND)
 
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#         except Exception as e:
+#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

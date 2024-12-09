@@ -346,6 +346,7 @@ class SurveyInitialDataDetail(models.Model):
     g_t_difference = models.DecimalField(max_digits=10, decimal_places=2)
     w_t_difference = models.DecimalField(max_digits=10, decimal_places=2)
     run_number = models.SmallIntegerField()
+    survey_type_status = models.SmallIntegerField()
   
     class Meta:
         db_table = 'task_survey_initial_data_detail'
