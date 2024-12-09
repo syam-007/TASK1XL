@@ -1105,10 +1105,10 @@ class InterPolationDataDeatilsViewSet(APIView):
         "From":range_from,
         "To":range_to,
         "Course_Length":resolution,
-        "Maximum Inclination":None,
-        "Closure Distance": None,
-        "Closure Direction": None,
-        "Vertical Section": None
+        "Maximum_Inclination":None,
+        "Closure_Distance": None,
+        "Closure_Direction": None,
+        "Vertical_Section": None
         }
 
         # Fetch the initial TVD and inclination from the SurveyCalculationDetails
