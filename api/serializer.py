@@ -166,44 +166,44 @@ class VehicleSerilaizer(serializers.ModelSerializer):
     class Meta:
         model = VehiclesDataMaster
         fields = '__all__'
-# class JobAssetSerializer(serializers.ModelSerializer):
-       
-#         cost_center = serializers.PrimaryKeyRelatedField(queryset=AssetMasterHeader.objects.all())
-#         gyro_data = serializers.PrimaryKeyRelatedField(queryset=GyrodataMaster.objects.all())
-#         vehicle = serializers.PrimaryKeyRelatedField(queryset=VehiclesDataMaster.objects.all())
-#         emp_1 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
-#         emp_2 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
-#         emp_3 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
-#         emp_4 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
-#         emp_5 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
-#         emp_6 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
-#         emp_7 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
-#         class Meta:
-#             model = JobAssetMaster
-#             fields = [
-#                  'cost_center', 'gyro_data', 'vehicle', 
-#                 'emp_1', 'emp_2', 'emp_3', 'emp_4', 'emp_5', 'emp_6', 'emp_7'
-#             ]
-
-
 class JobAssetSerializer(serializers.ModelSerializer):
-    cost_center = AssetHeaderSerializer(read_only=True)
-    gyro_data = GyroDataSerializer(read_only=True)
-    vehicle = VehicleSerilaizer(read_only=True)
-    emp_1 =  EmployeeSerializer(read_only=True)
-    emp_2 =  EmployeeSerializer(read_only=True)
-    emp_3 =  EmployeeSerializer(read_only=True)
-    emp_4 =  EmployeeSerializer(read_only=True)
-    emp_5 =  EmployeeSerializer(read_only=True)
-    emp_6 =  EmployeeSerializer(read_only=True)
-    emp_7 =  EmployeeSerializer(read_only=True)
+       
+        cost_center = serializers.PrimaryKeyRelatedField(queryset=AssetMasterHeader.objects.all())
+        gyro_data = serializers.PrimaryKeyRelatedField(queryset=GyrodataMaster.objects.all())
+        vehicle = serializers.PrimaryKeyRelatedField(queryset=VehiclesDataMaster.objects.all())
+        emp_1 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_2 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_3 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_4 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_5 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_6 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        emp_7 = serializers.PrimaryKeyRelatedField(queryset=EmployeeMaster.objects.all())
+        class Meta:
+            model = JobAssetMaster
+            fields = [
+                 'cost_center', 'gyro_data', 'vehicle', 
+                'emp_1', 'emp_2', 'emp_3', 'emp_4', 'emp_5', 'emp_6', 'emp_7'
+            ]
 
-    class Meta:
-        model = JobAssetMaster
-        fields = [
-            'cost_center', 'gyro_data', 'vehicle', 
-            'emp_1', 'emp_2', 'emp_3', 'emp_4', 'emp_5', 'emp_6', 'emp_7'
-        ]
+
+# class JobAssetSerializer(serializers.ModelSerializer):
+#     cost_center = AssetHeaderSerializer(read_only=True)
+#     gyro_data = GyroDataSerializer(read_only=True)
+#     vehicle = VehicleSerilaizer(read_only=True)
+#     emp_1 =  EmployeeSerializer(read_only=True)
+#     emp_2 =  EmployeeSerializer(read_only=True)
+#     emp_3 =  EmployeeSerializer(read_only=True)
+#     emp_4 =  EmployeeSerializer(read_only=True)
+#     emp_5 =  EmployeeSerializer(read_only=True)
+#     emp_6 =  EmployeeSerializer(read_only=True)
+#     emp_7 =  EmployeeSerializer(read_only=True)
+
+#     class Meta:
+#         model = JobAssetMaster
+#         fields = [
+#             'cost_center', 'gyro_data', 'vehicle', 
+#             'emp_1', 'emp_2', 'emp_3', 'emp_4', 'emp_5', 'emp_6', 'emp_7'
+#         ]
 
 
         

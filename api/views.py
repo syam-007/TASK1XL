@@ -1105,10 +1105,10 @@ class InterPolationDataDeatilsViewSet(APIView):
         "From":range_from,
         "To":range_to,
         "Course_Length":resolution,
-        "Maximum_Inclination":None,
-        "Closure_Distance": None,
-        "Closure_Direction": None,
-        "Vertical_Section": None
+        "Maximum Inclination":None,
+        "Closure Distance": None,
+        "Closure Direction": None,
+        "Vertical Section": None
         }
 
         # Fetch the initial TVD and inclination from the SurveyCalculationDetails
@@ -1228,10 +1228,10 @@ class InterPolationDataDeatilsViewSet(APIView):
 
         if results:
             last_result = results[-1]
-            header_data["Maximum_Inclination"] = round(max_inclination, 2)
-            header_data["Closure_Distance"] = last_result["closure_distance"]
-            header_data["Closure_Direction"] = last_result["closure_direction"]
-            header_data["Vertical_Section"] = last_result["vertical_section"]
+            header_data["Maximum Inclination"] = round(max_inclination, 2)
+            header_data["Closure Distance"] = last_result["closure_distance"]
+            header_data["Closure Direction"] = last_result["closure_direction"]
+            header_data["Vertical Section"] = last_result["vertical_section"]
        
         return Response({"header": header_data, "results": results}, status=status.HTTP_200_OK)
                
@@ -1386,7 +1386,7 @@ class InterPolationDataDeatilsViewSet(APIView):
         dls = round((dog_leg * 30) / CL, 2) if CL != 0 else 0
        
         return {
-            "measured_depth": new_depth,
+            "new_depth": new_depth,
             "inclination": inclination,
             "azimuth": azimuth,
             "dog_leg": round(dog_leg, 2),
