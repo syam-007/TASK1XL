@@ -441,8 +441,9 @@ class UploadExcelView(APIView):
                 azg = row.get("AzG")
                 g_t = row.get("G(t)")
                 w_t = row.get("W(t)")
-                g_t_difference = round(well_info.get_G_t - g_t, 2)
-                w_t_difference = round(well_info.get_W_t - w_t, 2)
+                g_t_difference = round( g_t - well_info.get_G_t, 2)
+      
+                w_t_difference = round(w_t - well_info.get_W_t , 2)
 
                 total_g_t_difference += g_t_difference
                 total_w_t_difference += w_t_difference
@@ -1514,6 +1515,7 @@ class ComparisonViewSet(APIView):
         previous_depth = None  # For calculating CL
 
         interpolated_data = {"depth": [], "Inc": [], "Azg": [], "CL": [], "dog_leg": []}
+       
 
         # Iterate through the depth values in the dataframe
         for i in range(len(df)):
