@@ -60,9 +60,7 @@ urlpatterns = [
     
     # path('save-calculation/', views.SaveCalculationViewSet.as_view(), name='save-calculation'),
 
-    path('comaprison/',views.ComparisonViewSet.as_view())
-    
-  
+    path('comaprison/',views.ComparisonViewSet.as_view()) 
 ]
 
 

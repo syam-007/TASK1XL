@@ -1178,13 +1178,14 @@ class InterPolationDataDeatilsViewSet(APIView):
 
         # Loop through survey data rows
         for survey_data in survey_data_rows:
-           
+            
             lower_depth = float(survey_data.depth)
             if lower_depth < range_from or lower_depth > range_to:
                 continue
 
             while upper_depth < lower_depth:
-                new_depth = min(upper_depth + resolution_value, lower_depth)
+                new_depth = upper_depth + resolution_value
+                print(f"new_depth:{new_depth}")
 
                 # Perform interpolation between the depths
                 interpolated_inclination, interpolated_azimuth = self.interpolate(
