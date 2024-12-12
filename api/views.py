@@ -33,6 +33,7 @@ from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal, ROUND_HALF_UP
 from rest_framework.parsers import MultiPartParser, FormParser
 import numpy as np
+from django.db import transaction
 
 
 
@@ -1234,7 +1235,13 @@ class InterPolationDataDeatilsViewSet(APIView):
             header_data["Closure Distance"] = last_result["closure_distance"]
             header_data["Closure Direction"] = last_result["closure_direction"]
             header_data["Vertical Section"] = last_result["vertical_section"]
-       
+        try:
+            save_response = self.save_results_to_db(results, header_id, resolution)
+            if save_response["status"] == "error":
+             return Response({'error': save_response["message"]}, status=status.HTTP_409_CONFLICT)
+        except Exception as e:
+            return Response({'error': f'Error saving data: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
         return Response({"header": header_data, "results": results}, status=status.HTTP_200_OK)
                
     def calculate_northing(self, previous_latitude, ratio_factor, CL, current_inclination, current_azimuth, previous_inclination, previous_azimuth):
@@ -1382,6 +1389,42 @@ class InterPolationDataDeatilsViewSet(APIView):
             return closure_direction
         except ZeroDivisionError:
             return None
+    def save_results_to_db(self, results, header_id, resolution):
+        try:
+        # Fetch the InterPolationDataHeader instance using the header_id
+            header_instance = InterPolationDataHeader.objects.get(id=header_id)
+            if InterPolationDataDeatils.objects.filter(header_id=header_instance).exists():
+             return {
+                "status": "error",
+                "message": "Data already exists for the given header ID."
+            }
+            with transaction.atomic():
+                for result in results:
+                    InterPolationDataDeatils.objects.create(
+                        header_id=header_instance,
+                        resolution=resolution,
+                        new_depth=result["new_depth"],
+                        inclination=result["inclination"],
+                        azimuth=result["azimuth"],
+                        dog_leg=result["dog_leg"],
+                        CL=result["CL"],
+                        ratio_factor=result["ratio_factor"],
+                        tvd=result["tvd"],
+                        latitude=result["latitude"],
+                        departure=result["departure"],
+                        closure_distance=result["closure_distance"],
+                        closure_direction=result["closure_direction"],
+                        DLS=result["DLS"],
+                        vertical_section=result["vertical_section"],
+                        survey_status=0 
+                    )
+                return {
+            "status": "success",
+            "message": "Data saved successfully."
+        }
+        except InterPolationDataHeader.DoesNotExist:
+          raise ValueError(f"InterPolationDataHeader with ID {header_id} does not exist.")
+        
     def format_result(self, new_depth, inclination, azimuth, dog_leg, CL, ratio_factor, tvd,latitude, departure, vertical_section):
         closure_distance = round((latitude**2 + departure**2)**0.5, 2)
         closure_direction = self.calculate_closure_direction(latitude, departure)
@@ -1403,8 +1446,6 @@ class InterPolationDataDeatilsViewSet(APIView):
             "vertical_section": round(vertical_section,2)
         }
     
-
-
 class ComparisonViewSet(APIView):
     parser_classes = [MultiPartParser, FormParser]
     REQUIRED_COLUMNS = {"depth", "Inc", "Azg"}
