@@ -1495,7 +1495,7 @@ class ComparisonViewSet(APIView):
         # Retrieve additional interpolation parameters from the request
         initial_depth = float(request.data.get("initial_depth", 0))  # Default to 0 if not provided
         initial_inclination = float(request.data.get("initial_inclination", 0))
-        initial_azimuth = float(request.data.get("azi", 0))
+        initial_azimuth = float(request.data.get("initial_azimuth", 0))
 
         try:
             # Read both Excel files into DataFrames
