@@ -1064,11 +1064,41 @@ class InterPolationDataHeaderViewSet(APIView):
 
 class InterPolationDataDeatilsViewSet(APIView):
     
-    def get(self, request, job_number, run_number,resolution):
-        try:
-            header = InterPolationDataHeader.objects.get(job_number=job_number, run_number=run_number,resolution=resolution)
-        except InterPolationDataHeader.DoesNotExist:
-            return Response({'error': 'Invalid job_number or run_number.'}, status=status.HTTP_400_BAD_REQUEST)
+    def get(self, request, job_number=None, run_number=None):
+        # Fetch headers based on job_number and run_number
+        if job_number and run_number:
+            headers = InterPolationDataHeader.objects.filter(job_number=job_number, run_number=run_number,)
+        else:
+            headers = InterPolationDataHeader.objects.all()
+        
+        if not headers.exists():
+            return Response({'error': 'No records found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Collect interpolation details for the fetched headers
+        result_data = []
+        for header in headers:
+            details = InterPolationDataDeatils.objects.filter(header_id=header.id)
+            for detail in details:
+                result_data.append({
+                    "new_depth": detail.new_depth,
+                    "inclination": detail.inclination,
+                    "azimuth": detail.azimuth,
+                    "dog_leg": round(detail.dog_leg, 2),
+                    "CL": round(detail.CL, 2),
+                    "ratio_factor": round(detail.ratio_factor, 2),
+                    "tvd": round(detail.tvd, 2),
+                    "latitude": round(detail.latitude, 2),
+                    "departure": round(detail.departure, 2),
+                    "closure_distance": round(detail.closure_distance, 2),
+                    "closure_direction": round(detail.closure_direction, 2),
+                    "DLS": round(detail.dls, 2),
+                    "vertical_section": round(detail.vertical_section, 2)
+                })
+
+        if not result_data:
+            return Response({'error': 'No interpolation details found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        return Response(result_data, status=status.HTTP_200_OK)
 
     def post(self,request, job_number, run_number, resolution,header_id):
         try:
@@ -1555,8 +1585,14 @@ class ComparisonViewSet(APIView):
         AZI1 = initial_azimuth
         previous_depth = None  # For calculating CL
 
-        interpolated_data = {"depth": [], "Inc": [], "Azg": [], "CL": [], "dog_leg": []}
-       
+        # Initialize interpolated data with the initial values from the request body
+        interpolated_data = {
+            "depth": [initial_depth],
+            "Inc": [initial_inclination],
+            "Azg": [initial_azimuth],
+            "CL": [0.0],  
+            "dog_leg": [0.0] 
+        }
 
         # Iterate through the depth values in the dataframe
         for i in range(len(df)):
@@ -1565,18 +1601,20 @@ class ComparisonViewSet(APIView):
             AZI2 = df["Azg"].iloc[i]
 
             while MD1 < MD2:
-                # For the very first depth, the dog_leg should be zero.
                 if MD1 == initial_depth:
-                    DL = 0
-                else:
-                    # Calculate Dogleg (DL) only after the first depth
-                    DL = self.dog_leg(INC1, INC2, AZI1, AZI2)
-                    DL0 = DL * ((MD1 - initial_depth) / (MD2 - initial_depth))
+                    # Skip the first depth since it's already initialized
+                    previous_depth = MD1
+                    MD1 += self.INTERPOLATION_RESOLUTION
+                    continue
+
+                # Calculate Dogleg (DL)
+                DL = self.dog_leg(INC1, INC2, AZI1, AZI2)
+                DL0 = DL * ((MD1 - initial_depth) / (MD2 - initial_depth))
 
                 # Calculate interpolated inclination
-                INC0 = INC1 + (INC2 - INC1) * (DL0 / DL if DL != 0 else 1)  # Adjust if DL is 0
+                INC0 = INC1 + (INC2 - INC1) * (DL0 / DL if DL != 0 else 1)
 
-                # Calculate interpolated azimuth using Interpolated_Azimuth logic
+                # Calculate interpolated azimuth
                 if (AZI2 - AZI1) > 180:
                     AZI0 = AZI1 + ((AZI2 - AZI1 - 360) * DL0 / DL if DL != 0 else 1)
                     if AZI0 < 0:
@@ -1585,27 +1623,25 @@ class ComparisonViewSet(APIView):
                     AZI0 = AZI1 + ((AZI2 - AZI1) * DL0 / DL if DL != 0 else 1)
 
                 # Calculate CL (Cumulative Length)
-                if previous_depth is None:  # First point
-                    CL = 0
-                else:
-                    CL = MD1 - previous_depth
+                CL = MD1 - previous_depth if previous_depth is not None else 0
 
                 # Append interpolated values and dog_leg
                 interpolated_data["depth"].append(MD1)
                 interpolated_data["Inc"].append(round(INC0, 2))
                 interpolated_data["Azg"].append(round(AZI0, 2))
                 interpolated_data["CL"].append(CL)
-                interpolated_data["dog_leg"].append(round(DL, 2))  # Store dog_leg for this depth
+                interpolated_data["dog_leg"].append(round(DL, 2))
 
-                # Update MD1 for next interpolation point
+                # Update MD1 for the next interpolation point
                 previous_depth = MD1
                 MD1 += self.INTERPOLATION_RESOLUTION
 
-            # Update variables for next segment
+            # Update variables for the next segment
             initial_depth = MD2
             INC1, AZI1 = INC2, AZI2
 
         return pd.DataFrame(interpolated_data)
+
 
     def compare_interpolated_data(self, df1, df2):
         """Compares the interpolated data from two DataFrames."""
