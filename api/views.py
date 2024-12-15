@@ -1579,68 +1579,59 @@ class ComparisonViewSet(APIView):
         """Interpolates data in a DataFrame and calculates dog_leg using the provided equation."""
         df = df.sort_values(by="depth").reset_index(drop=True)
 
-        # Initialize variables for iteration
-        MD1 = initial_depth
-        INC1 = initial_inclination
-        AZI1 = initial_azimuth
-        previous_depth = None  # For calculating CL
+        # Define the target depth range with the given step size
+        target_depths = list(range(int(initial_depth), int(df["depth"].max()) + 1, self.INTERPOLATION_RESOLUTION))
 
-        # Initialize interpolated data with the initial values from the request body
+        # Initialize interpolated data
         interpolated_data = {
             "depth": [initial_depth],
             "Inc": [initial_inclination],
             "Azg": [initial_azimuth],
-            "CL": [0.0],  
-            "dog_leg": [0.0] 
+            "CL": [0.0],  # Initial cumulative length is always 0
+            "dog_leg": [0.0]  # Initial dog_leg is always 0
         }
 
-        # Iterate through the depth values in the dataframe
-        for i in range(len(df)):
-            MD2 = df["depth"].iloc[i]
-            INC2 = df["Inc"].iloc[i]
-            AZI2 = df["Azg"].iloc[i]
+        # Variables for interpolation
+        MD1 = initial_depth
+        INC1 = initial_inclination
+        AZI1 = initial_azimuth
+        previous_depth = None
 
-            while MD1 < MD2:
-                if MD1 == initial_depth:
-                    # Skip the first depth since it's already initialized
-                    previous_depth = MD1
-                    MD1 += self.INTERPOLATION_RESOLUTION
-                    continue
+        for target_depth in target_depths[1:]:
+            # Find the next depth segment in the data
+            next_row = df[df["depth"] > MD1].iloc[0]
 
-                # Calculate Dogleg (DL)
-                DL = self.dog_leg(INC1, INC2, AZI1, AZI2)
-                DL0 = DL * ((MD1 - initial_depth) / (MD2 - initial_depth))
+            MD2 = next_row["depth"]
+            INC2 = next_row["Inc"]
+            AZI2 = next_row["Azg"]
 
-                # Calculate interpolated inclination
-                INC0 = INC1 + (INC2 - INC1) * (DL0 / DL if DL != 0 else 1)
+            # Perform interpolation for the target depth
+            DL = self.dog_leg(INC1, INC2, AZI1, AZI2)
+            DL0 = DL * ((target_depth - MD1) / (MD2 - MD1))
 
-                # Calculate interpolated azimuth
-                if (AZI2 - AZI1) > 180:
-                    AZI0 = AZI1 + ((AZI2 - AZI1 - 360) * DL0 / DL if DL != 0 else 1)
-                    if AZI0 < 0:
-                        AZI0 += 360
-                else:
-                    AZI0 = AZI1 + ((AZI2 - AZI1) * DL0 / DL if DL != 0 else 1)
+            INC0 = INC1 + (INC2 - INC1) * (DL0 / DL if DL != 0 else 1)
+            if (AZI2 - AZI1) > 180:
+                AZI0 = AZI1 + ((AZI2 - AZI1 - 360) * DL0 / DL if DL != 0 else 1)
+                if AZI0 < 0:
+                    AZI0 += 360
+            else:
+                AZI0 = AZI1 + ((AZI2 - AZI1) * DL0 / DL if DL != 0 else 1)
 
-                # Calculate CL (Cumulative Length)
-                CL = MD1 - previous_depth if previous_depth is not None else 0
+            CL = target_depth - previous_depth if previous_depth is not None else 0
 
-                # Append interpolated values and dog_leg
-                interpolated_data["depth"].append(MD1)
-                interpolated_data["Inc"].append(round(INC0, 2))
-                interpolated_data["Azg"].append(round(AZI0, 2))
-                interpolated_data["CL"].append(CL)
-                interpolated_data["dog_leg"].append(round(DL, 2))
+            interpolated_data["depth"].append(target_depth)
+            interpolated_data["Inc"].append(round(INC0, 2))
+            interpolated_data["Azg"].append(round(AZI0, 2))
+            interpolated_data["CL"].append(CL)
+            interpolated_data["dog_leg"].append(round(DL, 2))
 
-                # Update MD1 for the next interpolation point
-                previous_depth = MD1
-                MD1 += self.INTERPOLATION_RESOLUTION
-
-            # Update variables for the next segment
-            initial_depth = MD2
-            INC1, AZI1 = INC2, AZI2
+            # Update for the next target depth
+            MD1 = target_depth
+            INC1, AZI1 = INC0, AZI0
+            previous_depth = target_depth
 
         return pd.DataFrame(interpolated_data)
+
 
 
     def compare_interpolated_data(self, df1, df2):
